@@ -13,14 +13,27 @@ Markers still open:
 ## 1. Hypothesis
 
 1. **Agreement.** When several weak signals point the same way, the returns that follow are better than when you act on a single signal alone.
-   - *Why it should be true:* **[DRAFT]** Each indicator measures the same underlying behaviour with its own error. If those errors are partly independent, requiring agreement filters out false signals that a single indicator would trade on.
-   - *Weak point, stated in advance:* the signals are all calculations on the same price series, so their errors may not be independent at all (see Caveats).
+   - *Why it should be true:* Each signal is partly right and partly wrong. If their mistakes are largely independent, agreement between them raises confidence, because it is unlikely that all of them are wrong in the same direction at once.
+   - *What this needs:* each signal must carry some real information on its own, and their errors must be as weakly correlated as realistically possible.
+   - *Type of claim:* this is a claim about a method, so its reason is statistical. There is no losing side of a trade to name.
+   - *Source:* the forecast-combination literature: Timmermann (2006), "Forecast Combinations", in the *Handbook of Economic Forecasting*, volume 1.
+   - *Weak point, stated in advance:* the six V2 signals are all calculations on the same price series, so their errors may not be independent at all (see Caveats).
 
 2. **Regime dependence.** Which signal family works better depends on the regime. The main test uses four trend states (bull, correction, bear, rebound). High against low volatility is tested separately.
-   - *Why it should be true:* **[DRAFT]** Trends persist when information and new buyers arrive gradually. When the short-term move runs against the long-term trend, or when selling is forced, prices overshoot and snap back, which favours mean reversion.
+   - *Why trends continue (Bull, Bear):* prices move through feedback loops, not only news. News is absorbed gradually, so the price catches up over time. Rising prices pull in new buyers and force short sellers to buy back. Falling prices trigger liquidations and stop-losses, which force more selling.
+   - *Who is on the wrong side:* whoever traded against the trend. In a bull market, short sellers and those who sold early. In a bear market, leveraged buyers and those who bought the dip too early.
+   - *Why a dip in an uptrend recovers (Correction):* the dip is driven by sentiment and positioning, not a lasting change. Once forced and panicked sellers are finished, selling pressure fades and the lower price attracts buyers.
+   - *Who is on the wrong side:* panic sellers, anyone stopped out or liquidated, and late short sellers.
+   - *Sources:* **[DRAFT]** gradual absorption of news: Hong and Stein (1999), to be checked. Attention-driven buying: Liu and Tsyvinski (2021). Reversal as payment for providing liquidity to forced sellers: Nagel (2012). Forced liquidations in crypto: no source yet.
+   - *Weak point, stated in advance:* a correction and the start of a bear market look the same at the time. The Correction prediction loses exactly when the dip turns out to be the start of a bear market.
 
 3. **Switching.** Following whichever family suits the current regime beats holding either family all the time, after trading costs.
-   - *Why it should be true:* **[DRAFT]** It follows from claim 2, but only if regimes last long enough to be detected in time and the gain is larger than the cost of switching.
+   - *Why it should be true:* it follows from claim 2, but only if three conditions hold.
+     1. **Detection in time.** The regime has to be recognised early enough to act on. The fast trend is built from 30 days of returns, so a change of state can take weeks to show up.
+     2. **Persistence.** A state has to last long enough after it is detected for the switch to pay off.
+     3. **Costs.** The gain from switching has to be larger than the fees paid on every switch, including switches that turn out to be false alarms.
+   - *Who is on the wrong side:* the same traders as in claim 2. Switching adds no new mechanism.
+   - *Weak point, stated in advance:* each of the three conditions can fail on its own.
 
 The claims build on each other and are tested in order. Claim 3 is only tested if claim 2 passes.
 
@@ -96,7 +109,7 @@ All rules use past data only.
 - *Reason:* days inside a spell are not independent. If a family had no real advantage, the chance of it winning 5 spells out of 5 by luck is $\left(\tfrac{1}{2}\right)^5 \approx 3\%$.
 - Spells are counted by calendar period across both coins. BTC and ETH move together, so they do not double the count.
 - **If a trend state falls short,** it is merged with the state that shares its slow trend (correction into bull, rebound into bear).
-- **Check before any returns are used:** count the days and spells in each state.
+- **Check before any returns are used:** count the days and spells in each state, and record the typical spell length. Spell length is the first evidence on whether states last long enough for claim 3.
 
 ---
 
@@ -130,9 +143,11 @@ All rules use past data only.
 - **Metric:** Sharpe ratio after costs at 0.25% per side.
 - **Comparison:** the better of the two families held all the time.
 - **Sample:** design period, then the unseen coins.
-- **Pass:** **[DRAFT]** switching beats both single families on the design period, and the direction holds on the unseen coins.
-- **Confirmatory run:** the first complete backtest of the switching rule against both single families at 0.25% per side.
+- **Pass:** **[DRAFT]** switching beats both single families and the static blend on the design period, and the direction holds on the unseen coins.
+- **Confirmatory run:** the first complete backtest of the switching rule against both single families and the static blend at 0.25% per side.
 - **Benchmarks reported alongside (rule 15):** holding the coin at the same volatility, the single-signal version, and random entries with the same average exposure and holding time.
+- **Benchmark:** a static 50/50 blend of the slow and fast trend signals (Goulding, Harvey and Mazzoleni, 2023). Switching must beat this as well as both single families.
+  - *Reason:* the blend is the simpler model from the same paper. If switching cannot beat it, the regime machinery adds nothing (rule 13).
 
 ### Decision table
 
@@ -221,3 +236,17 @@ All rules use past data only.
 - Which V1 version was carried into V2? The October reruns (Sharpe 0.533, 425 orders) match the last May run (0.526, 425 orders), not the 0.94 run. To confirm in the code.
 - What changed between the V1 runs? Recoverable from QuantConnect's stored code.
 - What stop rule applies before deployment (for example a drawdown limit)? It is set from the results, in writing, before paper trading starts (rule 23).
+
+---
+
+## 11. Deployment requirements (worked on only if claim 3 and the frozen test pass)
+
+Listed now so the standard is known in advance. None of this is built before then.
+
+- **Execution:** the order type, when orders are placed relative to the signal, and a slippage assumption checked against real order-book data.
+- **Shorts:** perpetual-futures funding costs included in every result.
+- **Capacity:** the largest position the market can absorb without moving the price against the trade.
+- **Risk limits:** maximum position, maximum leverage and a drawdown stop, written before paper trading starts.
+- **Monitoring:** what is tracked live, and the result that switches the strategy off.
+- **Independent review:** someone else reruns the code and reproduces the numbers.
+- **Live record:** a paper-trading period of a length fixed in advance.
