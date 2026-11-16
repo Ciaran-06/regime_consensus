@@ -1,6 +1,6 @@
 # NOTES.md | regime_consensus | Last updated 16/11/26
 
-**Status:** Spec nearly complete. No data loaded for V3. Nothing in this file below *Background* has been tested.
+**Status:** Spec agreed on 16/11/26, apart from the open items marked below. No data loaded for V3. Nothing in this file below *Background* has been tested.
 
 The rules every test follows are in `BACKTESTING.md`. Rule numbers below refer to that file.
 
@@ -24,7 +24,8 @@ Markers still open:
    - *Who is on the wrong side:* whoever traded against the trend. In a bull market, short sellers and those who sold early. In a bear market, leveraged buyers and those who bought the dip too early.
    - *Why a dip in an uptrend recovers (Correction):* the dip is driven by sentiment and positioning, not a lasting change. Once forced and panicked sellers are finished, selling pressure fades and the lower price attracts buyers.
    - *Who is on the wrong side:* panic sellers, anyone stopped out or liquidated, and late short sellers.
-   - *Sources:* **[DRAFT]** gradual absorption of news: Hong and Stein (1999), to be checked. Attention-driven buying: Liu and Tsyvinski (2021). Reversal as payment for providing liquidity to forced sellers: Nagel (2012). Forced liquidations in crypto: no source yet.
+   - *Sources:* gradual absorption of news: Hong and Stein (1999), *Journal of Finance* 54(6). Attention-driven buying: Liu and Tsyvinski (2021), *Review of Financial Studies* 34(6). Reversal as payment for providing liquidity to forced sellers: Nagel (2012), *Review of Financial Studies* 25(7).
+   - **[DRAFT]** Forced liquidations in crypto: candidate sources found (working papers on perpetual-futures liquidation cascades), not yet read. The list of mechanisms is still to be cut to the one or two I would defend.
    - *Weak point, stated in advance:* a correction and the start of a bear market look the same at the time. The Correction prediction loses exactly when the dip turns out to be the start of a bear market.
 
 3. **Switching.** Following whichever family suits the current regime beats holding either family all the time, after trading costs.
@@ -82,7 +83,7 @@ All rules use past data only.
 ### Trend: four states from a slow and a fast trend
 - **Slow trend:** sign of the coin's return over the past 365 days.
 - **Fast trend:** sign of the coin's return over the past 30 days.
-- **[DRAFT]** the 365 and 30-day lengths follow the 12-month and 1-month convention in Goulding, Harvey and Mazzoleni (2023), "Momentum Turning Points". To confirm against the paper.
+- The 365 and 30-day lengths follow the 12-month and 1-month convention in Goulding, Harvey and Mazzoleni (2023), "Momentum Turning Points", converted to days. Confirmed from summaries of the paper; the full text has not been read yet.
 - *Reason for this rule over a 200-day average:* a single long average takes months to register a turn. The fast trend flags the turn early. This reason does not depend on any backtest result.
 
 **Predicted better family in each state, written before looking:**
@@ -100,7 +101,7 @@ All rules use past data only.
 - The paper's evidence is monthly equity-market data. Carrying it to daily crypto is an assumption.
 
 ### Volatility: tested separately
-- **[DRAFT]** high if 30-day realised volatility is above its own median over the previous 365 days, low otherwise.
+- High if 30-day realised volatility is above its own median over the previous 365 days, low otherwise.
 - **No prediction was made**, so the volatility result is exploratory. It is reported but cannot count as a pass for claim 2.
 - The trend states and the volatility states are never combined into an 8-cell grid.
 
@@ -120,30 +121,36 @@ All rules use past data only.
 - A confirmatory run that fails because of a bug is logged, fixed and rerun. The rerun only counts if the fix was not chosen by looking at the result.
 
 ### Pre-check: are the signals different?
-- Correlation matrix of the six daily scores, per coin.
-- Reported, not pass/fail. If the signals within a family are nearly identical, claim 1 is tested on what is effectively one signal per family, and that is stated in the write-up.
+- Rank-correlation matrix of the six daily scores, per coin, on the design period. Also computed separately for calm and turbulent periods, because signals tend to move together in a crash.
+- **Selection rule, fixed in advance:** two signals in the same family with a correlation above 0.7 are treated as near-copies, and one is dropped.
+  - *Reason for 0.7:* at 0.7 two signals share about half their variation ($0.7^2 = 0.49$).
+  - *Which one is kept:* the signal with the longer lookback, since longer windows are less noisy. Momentum order: MACD, then rate of change, then RSI. Mean-reversion order: z-score, then Bollinger band position, then RSI extreme.
+- **If a family is left with two signals,** it agrees when both point the same way.
+- **If a family is left with one signal,** claim 1 cannot be tested in that family, and the signal pool is widened from other types of data (see Parked).
+- This step uses no returns. It is logged in `runs.csv` as a diagnostic run.
 
 ### Claim 1: agreement
 - **Metric:** mean return over the next 5 days after a signal, in the direction the signal points.
 - **Comparison:** within each family, a single signal with its threshold set so that it trades on the same number of days as the agreement gate.
 - **Sample:** BTC and ETH, design period.
-- **Pass:** **[DRAFT]** the agreement gate's mean forward return is higher, with $t > 2$ on the difference (using a method that allows for overlapping 5-day windows).
+- **Pass:** the majority rule's mean forward return is higher, with $t > 2$ on the difference (using a method that allows for overlapping 5-day windows).
 - **Confirmatory run:** the first complete run of this comparison on the design period, both coins pooled, with the fixed choices in section 6.
 
 ### Claim 2: regime dependence
 - **Metric:** mean 5-day forward return per signal, for each family in each trend state.
 - **Comparison:** the predicted table in section 3.
 - **Sample:** BTC and ETH, design period; only states that meet the minimum in section 3.
-- **Pass:** **[DRAFT]** in each of the three states with a prediction, the predicted family has the higher mean forward return, and the gap between the families in Correction differs from the gap in Bull and Bear with $t > 2$.
+- **Pass:** in each of the three states with a prediction, the predicted family has the higher mean forward return, and the gap between the families in Correction differs from the gap in Bull and Bear with $t > 2$.
 - **Confirmatory run:** the first complete run of the family-by-trend-state table on the design period, both coins pooled.
 - **Volatility:** the same table for high and low volatility, reported as exploratory.
 
 ### Claim 3: switching
-- **Rule:** follow the predicted family in each state. **[DRAFT]** hold no position in a state with no prediction.
+- **Rule:** follow the predicted family in each state. Hold no position in a state with no prediction.
 - **Metric:** Sharpe ratio after costs at 0.25% per side.
 - **Comparison:** the better of the two families held all the time.
 - **Sample:** design period, then the unseen coins.
-- **Pass:** **[DRAFT]** switching beats both single families and the static blend on the design period, and the direction holds on the unseen coins.
+- **Pass:** switching beats both single families and the static blend on the design period, and the direction holds on the unseen coins.
+  - *Weak point, stated in advance:* this asks only for a higher Sharpe, with no significance test, because eight years of data cannot prove a Sharpe difference. The frozen test and paper trading exist for that reason.
 - **Confirmatory run:** the first complete backtest of the switching rule against both single families and the static blend at 0.25% per side.
 - **Benchmarks reported alongside (rule 15):** holding the coin at the same volatility, the single-signal version, and random entries with the same average exposure and holding time.
 - **Benchmark:** a static 50/50 blend of the slow and fast trend signals (Goulding, Harvey and Mazzoleni, 2023). Switching must beat this as well as both single families.
@@ -189,7 +196,9 @@ All rules use past data only.
 | Price z-score | Mean reversion (sign flipped from V2) | average of 20, 50 and 100 days | Range average, so no single value is tuned |
 
 - Agreement is measured **within** each family, because the two families disagree by design in a trend.
-- **Agreement threshold:** **[DECIDE]** V2 used 0.6, inherited from V1 with no source. Either give it a source or replace it with a rule that has no number to tune.
+- **Agreement rule:** a family agrees when at least two of its three signals point the same way. A signal giving no reading counts for neither side.
+  - *Reason:* a majority rule has no number to tune. It replaces the 0.6 threshold from V2, which was inherited from the V1 search with no source.
+  - *Weak point, stated in advance:* a majority is a weaker form of agreement than all signals agreeing, so it is harder to tell apart from a single signal.
 - **Costs:** judged at 0.25% per side until the fund confirms its exchange and fee tier. Results are also reported at 0.1% and 0.6%.
 - No parameter is tuned on the design period.
 
@@ -221,6 +230,8 @@ All rules use past data only.
 ## 9. Parked (with the condition for coming back)
 
 - **ML weighting of the two families:** only if claim 3 passes with a simple rule, and only if it then beats that rule out of sample.
+- **A learned agreement function (for example a temporal transformer) in place of the majority rule:** only if claim 1 passes with the majority rule. It must beat the majority rule out of sample, a simple model is tried before a transformer, and it needs more data than daily bars on two coins.
+- **A wider signal pool (volume, funding rates, on-chain activity, attention):** only if the correlation pre-check leaves a family with one signal. Each new signal needs a written source first.
 - **Hidden Markov model as the regime rule:** only if claim 2 passes with the simple rules, tested as one pre-declared change against them.
 - **Trend and volatility combined:** only if each passes on its own.
 - **Vol-forecast position sizing:** only after claim 3, as one pre-declared change.
