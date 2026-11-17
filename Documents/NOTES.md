@@ -258,7 +258,7 @@ All rules use past data only.
 
 ## 10. Open questions
 
-- **To confirm with the team lead:** that the fund trades crypto through Alpaca, at tier 1, with no shorting. Current assumption from my own understanding (17/11/26). **[DECIDE]** date asked and the answer.
+- **To confirm with the team lead:** that the fund trades crypto through Alpaca, at tier 1, with no shorting. Current assumption from my own understanding (17/11/26). 
 - Did the April–May V1 runs include 2026 data? If so, early 2026 is not unseen.
 - Which V1 version was carried into V2? The October reruns (Sharpe 0.533, 425 orders) match the last May run (0.526, 425 orders), not the 0.94 run. To confirm in the code.
 - What changed between the V1 runs? Recoverable from QuantConnect's stored code.
