@@ -28,7 +28,7 @@ Markers still open:
    - **[DRAFT]** Forced liquidations in crypto: candidate sources found (working papers on perpetual-futures liquidation cascades), not yet read. The list of mechanisms is still to be cut to the one or two I would defend.
    - *Weak point, stated in advance:* a correction and the start of a bear market look the same at the time. The Correction prediction loses exactly when the dip turns out to be the start of a bear market.
 
-3. **Switching.** Following whichever family suits the current regime beats holding either family all the time, after trading costs.
+3. **Switching.** Following whichever family suits the current regime beats holding either family all the time, after trading costs, trading long or flat only.
    - *Why it should be true:* it follows from claim 2, but only if three conditions hold.
      1. **Detection in time.** The regime has to be recognised early enough to act on. The fast trend is built from 30 days of returns, so a change of state can take weeks to show up.
      2. **Persistence.** A state has to last long enough after it is detected for the switch to pay off.
@@ -37,6 +37,8 @@ Markers still open:
    - *Weak point, stated in advance:* each of the three conditions can fail on its own.
 
 The claims build on each other and are tested in order. Claim 3 is only tested if claim 2 passes.
+
+**Long or flat, decided 17/11/26 before any V3 result.** The fund trades through Alpaca, which does not offer margin or short selling for crypto. Claims 1 and 2 are statements about the market, so they test signals in both directions. Claim 3 is the tradable strategy, so it holds the coin or holds cash, never a short. The reason is the broker's constraint, not any earlier backtest result.
 
 ---
 
@@ -145,7 +147,8 @@ All rules use past data only.
 - **Volatility:** the same table for high and low volatility, reported as exploratory.
 
 ### Claim 3: switching
-- **Rule:** follow the predicted family in each state. Hold no position in a state with no prediction.
+- **Rule:** follow the predicted family in each state, long or flat only: when the family points up, hold the coin; when it points down or does not agree, hold cash. Hold cash in a state with no prediction.
+  - *Consequence, stated in advance:* in Bear the predicted family is momentum, which mostly points down, so the strategy will mostly hold cash in bear markets.
 - **Metric:** Sharpe ratio after costs at 0.25% per side.
 - **Comparison:** the better of the two families held all the time.
 - **Sample:** design period, then the deciding unseen coins (LTC and BCH) pooled together.
@@ -154,6 +157,7 @@ All rules use past data only.
 - **Confirmatory run:** the first complete backtest of the switching rule against both single families and the static blend at 0.25% per side.
 - **Benchmarks reported alongside (rule 15):** holding the coin at the same volatility, the single-signal version, and random entries with the same average exposure and holding time.
 - **Benchmark:** a static 50/50 blend of the slow and fast trend signals (Goulding, Harvey and Mazzoleni, 2023). Switching must beat this as well as both single families.
+- **All claim 3 comparisons are long or flat** (the single families, the blend and random entries), so every strategy faces the same constraint.
   - *Reason:* the blend is the simpler model from the same paper. If switching cannot beat it, the regime machinery adds nothing (rule 13).
 
 ### Decision table
@@ -207,7 +211,7 @@ All rules use past data only.
 - **Agreement rule:** a family agrees when at least two of its three signals point the same way. A signal giving no reading counts for neither side.
   - *Reason:* a majority rule has no number to tune. It replaces the 0.6 threshold from V2, which was inherited from the V1 search with no source.
   - *Weak point, stated in advance:* a majority is a weaker form of agreement than all signals agreeing, so it is harder to tell apart from a single signal.
-- **Costs:** judged at 0.25% per side until the fund confirms its exchange and fee tier. Results are also reported at 0.1% and 0.6%.
+- **Costs:** 0.25% per side, Alpaca's tier 1 taker fee (30-day crypto volume under $100,000). Taker, because orders at the daily close are market orders; the 0.15% maker fee would need limit orders that may not fill. Results are also reported at 0.1% and 0.6%. The bid–ask spread is extra, and is checked before deployment (section 11).
 - No parameter is tuned on the design period.
 
 ---
@@ -225,7 +229,7 @@ All rules use past data only.
 - The design period has already been seen, and I know what worked on it.
 - The six signals are all calculations on the same price, so they are probably highly correlated.
 - 2018–2025 contains only two or three bear markets, so any regime result rests on a few independent episodes.
-- Shorts would need perpetual futures, whose funding costs are not modelled yet.
+- Claim 3 is long or flat because the fund's broker cannot short crypto. Results from claims 1 and 2 on falling-price signals therefore cannot be traded by the fund.
 - The frozen test is under a year of data: enough to catch a disaster, not enough to confirm an edge.
 - Several claims are tested, so one passing at $t > 2$ is weaker evidence than a single pre-chosen test.
 - One 5-day horizon is used for both families. Momentum may need longer to show, which could bias the comparison against it.
@@ -254,7 +258,7 @@ All rules use past data only.
 
 ## 10. Open questions
 
-- Which exchange and fee tier would the fund use? **[DECIDE]** date the team lead was asked.
+- **To confirm with the team lead:** that the fund trades crypto through Alpaca, at tier 1, with no shorting. Current assumption from my own understanding (17/11/26). **[DECIDE]** date asked and the answer.
 - Did the April–May V1 runs include 2026 data? If so, early 2026 is not unseen.
 - Which V1 version was carried into V2? The October reruns (Sharpe 0.533, 425 orders) match the last May run (0.526, 425 orders), not the 0.94 run. To confirm in the code.
 - What changed between the V1 runs? Recoverable from QuantConnect's stored code.
@@ -267,7 +271,7 @@ All rules use past data only.
 Listed now so the standard is known in advance. None of this is built before then.
 
 - **Execution:** the order type, when orders are placed relative to the signal, and a slippage assumption checked against real order-book data.
-- **Shorts:** perpetual-futures funding costs included in every result.
+- **Shorts:** not applicable. The strategy is long or flat on Alpaca.
 - **Capacity:** the largest position the market can absorb without moving the price against the trade.
 - **Risk limits:** maximum position, maximum leverage and a drawdown stop, written before paper trading starts.
 - **Monitoring:** what is tracked live, and the result that switches the strategy off.
