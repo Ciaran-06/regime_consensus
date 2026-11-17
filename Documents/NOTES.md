@@ -1,4 +1,4 @@
-# NOTES.md | regime_consensus | Last updated 16/11/26
+# NOTES.md | regime_consensus | Last updated 17/11/26
 
 **Status:** Spec agreed on 16/11/26, apart from the open items marked below. No data loaded for V3. Nothing in this file below *Background* has been tested.
 
@@ -148,8 +148,8 @@ All rules use past data only.
 - **Rule:** follow the predicted family in each state. Hold no position in a state with no prediction.
 - **Metric:** Sharpe ratio after costs at 0.25% per side.
 - **Comparison:** the better of the two families held all the time.
-- **Sample:** design period, then the unseen coins.
-- **Pass:** switching beats both single families and the static blend on the design period, and the direction holds on the unseen coins.
+- **Sample:** design period, then the deciding unseen coins (LTC and BCH) pooled together.
+- **Pass:** switching beats both single families and the static blend on the design period, and the same holds on the deciding unseen coins pooled together. The secondary coins (ETC and LINK) are reported but do not count.
   - *Weak point, stated in advance:* this asks only for a higher Sharpe, with no significance test, because eight years of data cannot prove a Sharpe difference. The frozen test and paper trading exist for that reason.
 - **Confirmatory run:** the first complete backtest of the switching rule against both single families and the static blend at 0.25% per side.
 - **Benchmarks reported alongside (rule 15):** holding the coin at the same volatility, the single-signal version, and random entries with the same average exposure and holding time.
@@ -179,7 +179,15 @@ All rules use past data only.
 - **Design period:** 2018-01-01 to 2025-12-31. Already seen by V1 and V2, which is stated as a limitation.
 - **Warm-up:** data from 2017-01-01, used only to fill the 365-day lookbacks. No results are measured on it.
 - **Frozen test:** 2026-01-01 onwards, in a separate file that is not opened until the end. Opened once.
-- **Unseen coins:** long-history coins, so they cover both bear markets: LTC, BCH, LINK and ETC, subject to each having data from 2018 on the chosen exchange. **[DECIDE]** final list after the data check, fixed before any V3 result. Downloaded now, not analysed until claim 3.
+- **Source:** Coinbase public Exchange API, daily candles (one per UTC day), downloaded on 16/11/26. Provisional until the fund confirms its exchange. Details are in `DATA.md`.
+- **Unseen coins, fixed on 16/11/26 from first dates only. No prices were looked at.**
+  - **Deciding tier: LTC and BCH.** Both pass the rule written in advance (data from 2018): LTC starts 2017-01-01 and BCH starts 2017-12-20. Because of the fork rule below, BCH's regime labels start on 2019-11-20.
+  - **Secondary tier: ETC (from 2018-08-08) and LINK (from 2019-06-27).** Reported alongside, but they cannot decide any claim, because they start too late to cover the 2018 bear market.
+  - **Pooling:** the deciding coins are pooled together. A result is not required on each coin separately.
+  - **BCH fork rule, decided 17/11/26 from dates only:** BCH's four missing days are 2018-11-16 to 2018-11-19, when Coinbase paused trading around the Bitcoin Cash split of 15 November 2018. BCH is treated as a new coin from 2018-11-20, the first day of trading after the gap. No data before that date is used for BCH, and its 365-day warm-up restarts, so its regime labels start on 2019-11-20.
+    - *Reason:* before the split one BCH entitled the holder to both resulting coins, and after it only to one. A return or trend that spans the split compares two different assets, like a spin-off. A narrow exclusion window would remove the fake 5-day returns but leave a year of 365-day trend labels built on that comparison.
+    - *Cost:* about a year of BCH is lost. Little of the 2018 bear market is affected, because BCH's labels would only have started in December 2018 anyway.
+  - Not analysed until claim 3.
 - **Forward test:** paper trading after the frozen test.
 
 ---
@@ -221,7 +229,8 @@ All rules use past data only.
 - The frozen test is under a year of data: enough to catch a disaster, not enough to confirm an edge.
 - Several claims are tested, so one passing at $t > 2$ is weaker evidence than a single pre-chosen test.
 - One 5-day horizon is used for both families. Momentum may need longer to show, which could bias the comparison against it.
-- The unseen coins move with BTC, so they are supporting evidence, not an independent test (rule 17).
+- The unseen coins move with BTC, so they are supporting evidence, not an independent test (rule 17). The two deciding coins, LTC and BCH, are both close relatives of Bitcoin, which makes them the least independent test available.
+- LTC and BCH are less liquid than BTC, so real trading costs on them would be higher than the 0.25% assumed.
 - Effects weaken once they are published and traded. Crypto momentum has been public since 2018, so it may already have faded (rule 25).
 - Only live or paper trading is truly out of sample, because every historical test is run knowing roughly how history went (rule 18).
 
@@ -230,7 +239,10 @@ All rules use past data only.
 ## 9. Parked (with the condition for coming back)
 
 - **ML weighting of the two families:** only if claim 3 passes with a simple rule, and only if it then beats that rule out of sample.
-- **A learned agreement function (for example a temporal transformer) in place of the majority rule:** only if claim 1 passes with the majority rule. It must beat the majority rule out of sample, a simple model is tried before a transformer, and it needs more data than daily bars on two coins.
+- **A state-space model of the signals in place of the majority rule:** only if claim 1 passes with the majority rule. Each signal is treated as a noisy reading of one hidden trend, estimated each day with a Kalman filter (Kalman, 1960; Harvey, 1989, *Forecasting, Structural Time Series Models and the Kalman Filter*). It weights signals by their noise and allows for shared errors, which majority voting cannot.
+  - Conditions: one pre-declared run, counted in the budget; parameters estimated on past data only, refitted on an expanding window; it must beat the majority rule out of sample.
+  - If the majority rule fails claim 1, this is not a rescue. It becomes a new hypothesis for a later project, written down before testing.
+  - A neural network (for example a temporal transformer) is only considered after the state-space model, and needs more data than daily bars on two coins.
 - **A wider signal pool (volume, funding rates, on-chain activity, attention):** only if the correlation pre-check leaves a family with one signal. Each new signal needs a written source first.
 - **Hidden Markov model as the regime rule:** only if claim 2 passes with the simple rules, tested as one pre-declared change against them.
 - **Trend and volatility combined:** only if each passes on its own.
