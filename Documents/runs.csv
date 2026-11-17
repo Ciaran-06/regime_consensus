@@ -1,0 +1,7 @@
+run_id,date,type,counts_toward_budget,phase,script,what_changed,result
+R00,2026-04-27 to 2026-10-23,exploratory,no,-,QuantConnect,"V1 and V2: 38 backtests, see NOTES.md section 2","Best Sharpe 0.94. Counts as no evidence."
+D01,2026-11-16,data,no,0b,scripts/00_download.py,"First download: 6 coins, 2017-01-01 to 2025-12-31","Complete except BCH: 4 missing days"
+D02,2026-11-17,data,no,2,Notebooks/first_data_inspection.py,"BCH missing dates, dates only","2018-11-16 to 2018-11-19 (fork pause)"
+D03,2026-11-17,data,no,2,Notebooks/sanity_check.py,"Day boundaries and zero-volume days, all 6 coins","All candles at 00:00 UTC; no zero-volume days"
+D04,2026-11-17,data,no,2,Notebooks/big_moves.py,"10 largest daily moves, BTC and ETH","0 suspect days out of 20"
+R01,2026-11-17,diagnostic,yes,3,scripts/01_regimes.py,"Regime labels and spell count, BTC and ETH, 2018-2025","All 8 coin-states meet the 5-spell minimum; median spell 2-4 days"

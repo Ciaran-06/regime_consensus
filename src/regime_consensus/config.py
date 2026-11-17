@@ -31,3 +31,9 @@ DESIGN_COINS = ["BTC-USD", "ETH-USD"]
 # Provisional list: the final one is fixed after checking each coin's first date (NOTES.md section 5)
 UNSEEN_COINS = ["LTC-USD", "BCH-USD", "LINK-USD", "ETC-USD"]
 
+# --- regime rules (NOTES.md section 3) ---
+SLOW_LOOKBACK = 365   # days: 12-month convention (Goulding, Harvey and Mazzoleni, 2023)
+FAST_LOOKBACK = 30    # days: 1-month convention
+TIE_SIGN = -1         # a return of exactly zero counts as down: flat is not evidence of an uptrend
+MIN_SPELL_DAYS = 20   # a spell counts towards the evidence rule only if it lasts at least this long
+MIN_SPELLS = 5        # a state's result counts only with at least this many long spells

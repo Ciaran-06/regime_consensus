@@ -21,7 +21,7 @@ High-level steps only. Details live in `NOTES.md` (the spec), `BACKTESTING.md` (
 - [x] **0. Write the spec.** *So the hypothesis and kill tests are dated before any data.*
 - [x] **0b. Download the data.** *Design and unseen coins, 2017–2025, frozen data never requested.*
 - [x] **1. Close the spec.** Finish the open `[DECIDE]` and `[DRAFT]` items in NOTES.md. *So every rule is fixed before any result.*
-- [ ] **2. Finish the data checks.** Clear the `[TODO]`s in DATA.md. *So bad data can't create fake signals.*
+- [x] **2. Finish the data checks.** Clear the `[TODO]`s in DATA.md. *So bad data can't create fake signals.*
 - [ ] **3. Label regimes and count spells.** *To see whether each state has enough evidence to test, and how long states last.*
 - [ ] **4. Build and unit-test the six signals,** with the mean-reversion signs flipped. *So the code matches the spec before it touches returns.*
 - [ ] **5. Correlation pre-check.** Drop near-copies by the fixed rule. *So claim 1 tests different signals, not one signal several times.*

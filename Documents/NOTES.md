@@ -1,6 +1,6 @@
 # NOTES.md | regime_consensus | Last updated 17/11/26
 
-**Status:** Spec agreed on 16/11/26; all `[DRAFT]` items closed on 17/11/26. Data downloaded and checked for gaps; no returns or signals computed yet. Nothing in this file below *Background* has been tested.
+**Status:** Spec agreed on 16/11/26; all `[DRAFT]` items closed on 17/11/26. Data downloaded and checked. Regime labels built and spells counted (run R01, 17/11/26). No forward returns or signals computed yet. Results are recorded in section 12 as they come in.
 
 The rules every test follows are in `BACKTESTING.md`. Rule numbers below refer to that file.
 
@@ -85,6 +85,8 @@ All rules use past data only.
 - **Fast trend:** sign of the coin's return over the past 30 days.
 - The 365 and 30-day lengths follow the 12-month and 1-month convention in Goulding, Harvey and Mazzoleni (2023), "Momentum Turning Points", converted to days. Confirmed from summaries of the paper; the full text has not been read yet.
 - *Reason for this rule over a 200-day average:* a single long average takes months to register a turn. The fast trend flags the turn early. This reason does not depend on any backtest result.
+- **Ties:** a trend return of exactly zero counts as down (−1), because a flat price is not evidence of an uptrend. Decided 17/11/26, before labelling. The number of ties is counted once the labels are built and recorded in `DATA.md`.
+- **Warm-up days:** a day without a full lookback has no sign and no state. It is never labelled up or down by default.
 
 **Predicted better family in each state, written before looking:**
 
@@ -108,9 +110,10 @@ All rules use past data only.
 ### Minimum evidence per state
 - **A state's result counts only if it has at least 5 spells of at least 20 days each.** A spell is one continuous run of days in that state.
 - *Reason:* days inside a spell are not independent. If a family had no real advantage, the chance of it winning 5 spells out of 5 by luck is $\left(\tfrac{1}{2}\right)^5 \approx 3\%$.
-- Spells are counted by calendar period across both coins. BTC and ETH move together, so they do not double the count.
+- **Spells are counted per coin:** each coin must have at least 5 long spells in a state on its own. BTC and ETH move together, so their spells are not added together.
+  - *Note:* this wording was settled on 17/11/26, after the spell count. Before that the spec said only "counted by calendar period across both coins". It does not change the outcome: every state passes for each coin separately, and therefore also under BTC alone (section 12).
 - **If a trend state falls short,** it is merged with the state that shares its slow trend (correction into bull, rebound into bear).
-- **Check before any returns are used:** count the days and spells in each state, and record the typical spell length. Spell length is the first evidence on whether states last long enough for claim 3.
+- **Check before any returns are used:** count the days and spells in each state, and record the typical spell length. Spell length is the first evidence on whether states last long enough for claim 3. Done in run R01; see section 12.
 
 ---
 
@@ -275,3 +278,31 @@ Listed now so the standard is known in advance. None of this is built before the
 - **Monitoring:** what is tracked live, and the result that switches the strategy off.
 - **Independent review:** someone else reruns the code and reproduces the numbers.
 - **Live record:** a paper-trading period of a length fixed in advance.
+
+---
+
+## 12. Results
+
+Results are added here in run order. Each entry names its run in `runs.csv`. Nothing above this section is changed because of a result.
+
+### R01 — Regime labels and spell count (17/11/26, diagnostic)
+
+- **Script:** `scripts/01_regimes.py`. Labels saved as `data/derived/regimes.parquet` (see `DATA.md`).
+- **Sample:** BTC and ETH, 2018-01-01 to 2025-12-31. Every design day has a label (2,922 per coin).
+- **Uses no forward returns,** so it cannot pass or fail a claim.
+
+| Coin | State | Days | Spells | Spells ≥ 20 days | Median spell (days) | Meets minimum |
+|---|---|---|---|---|---|---|
+| BTC | Bull | 1,175 | 90 | 17 | 3 | Yes |
+| BTC | Correction | 961 | 89 | 16 | 3 | Yes |
+| BTC | Bear | 423 | 43 | 9 | 3 | Yes |
+| BTC | Rebound | 363 | 43 | 6 | 2 | Yes |
+| ETH | Bull | 976 | 68 | 15 | 4 | Yes |
+| ETH | Correction | 776 | 73 | 14 | 4 | Yes |
+| ETH | Bear | 655 | 51 | 9 | 4 | Yes |
+| ETH | Rebound | 515 | 47 | 9 | 4 | Yes |
+
+- **Every state meets the 5-spell minimum on both coins,** so no states are merged. Claim 2 is tested on all three predicted states. The weakest is BTC Rebound, with 6 long spells.
+- **Most spells are very short:** the median is 2–4 days. The 30-day sign flips whenever the price is close to its level a month earlier, so a few long spells are surrounded by many brief ones.
+- **Warning for claim 3, recorded before any returns are computed:** this is the first evidence on the persistence condition. A strategy that switches every time the label changes would trade very often and pay 0.25% each time.
+- **The regime rule is not changed because of this.** Smoothing the labels or adding a minimum holding period now would be adjusting the spec after seeing data. If claim 3 fails on costs, this table is part of the explanation.

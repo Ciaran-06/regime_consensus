@@ -1,6 +1,6 @@
 # DATA.md | regime_consensus | Data sources, layout, checks and known gaps
 
-Last updated 17/11/26 (all data checks done: BCH gaps, day boundaries, zero-volume days, largest moves; file structure and download time added). After every download, rerun `scripts/00_download.py` and update this file.
+Last updated 17/11/26 (all data checks done; `regimes` derived table added). After every download, rerun `scripts/00_download.py` and update this file.
 
 Markers:
 - **[TODO]** = a check still to run. Fill in the result and remove the marker.
@@ -64,6 +64,22 @@ data/                                     not in git
 
 **Derived** `data/derived/<name>.parquet`
 - Processed tables (regime labels, signals). Each is documented here when it is first created.
+- Load with `load_derived(name, columns)` from `regime_consensus.io`.
+
+**`regimes`** `data/derived/regimes.parquet` (run R01, 17/11/26)
+- Built by `scripts/01_regimes.py` with `label_regimes` from `src/regime_consensus/regimes.py`.
+- BTC and ETH, 2018-01-01 to 2025-12-31. One row per coin per day: 2,922 rows per coin, 5,844 in total. Key: (`coin`, `date`).
+- Labels are computed on 2017–2025 closes, then cut to 2018 onwards, so 2017 only fills the 365-day lookbacks.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `coin` | text | e.g. `BTC-USD` |
+| `date` | datetime, no time zone | the UTC day |
+| `slow` | float, +1 or −1 | sign of the return over the past 365 days |
+| `fast` | float, +1 or −1 | sign of the return over the past 30 days |
+| `state` | text | `BULL`, `CORRECTION`, `BEAR` or `REBOUND` |
+
+- A return of exactly zero counts as −1 (NOTES.md section 3). **[TODO]** record the number of ties per coin and lookback (expected: 0).
 
 ---
 
