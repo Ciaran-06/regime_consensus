@@ -1,6 +1,6 @@
 # NOTES.md | regime_consensus | Last updated 17/11/26
 
-**Status:** Spec agreed on 16/11/26, apart from the open items marked below. No data loaded for V3. Nothing in this file below *Background* has been tested.
+**Status:** Spec agreed on 16/11/26; all `[DRAFT]` items closed on 17/11/26. Data downloaded and checked for gaps; no returns or signals computed yet. Nothing in this file below *Background* has been tested.
 
 The rules every test follows are in `BACKTESTING.md`. Rule numbers below refer to that file.
 
@@ -20,12 +20,14 @@ Markers still open:
    - *Weak point, stated in advance:* the six V2 signals are all calculations on the same price series, so their errors may not be independent at all (see Caveats).
 
 2. **Regime dependence.** Which signal family works better depends on the regime. The main test uses four trend states (bull, correction, bear, rebound). High against low volatility is tested separately.
-   - *Why trends continue (Bull, Bear):* prices move through feedback loops, not only news. News is absorbed gradually, so the price catches up over time. Rising prices pull in new buyers and force short sellers to buy back. Falling prices trigger liquidations and stop-losses, which force more selling.
-   - *Who is on the wrong side:* whoever traded against the trend. In a bull market, short sellers and those who sold early. In a bear market, leveraged buyers and those who bought the dip too early.
-   - *Why a dip in an uptrend recovers (Correction):* the dip is driven by sentiment and positioning, not a lasting change. Once forced and panicked sellers are finished, selling pressure fades and the lower price attracts buyers.
-   - *Who is on the wrong side:* panic sellers, anyone stopped out or liquidated, and late short sellers.
-   - *Sources:* gradual absorption of news: Hong and Stein (1999), *Journal of Finance* 54(6). Attention-driven buying: Liu and Tsyvinski (2021), *Review of Financial Studies* 34(6). Reversal as payment for providing liquidity to forced sellers: Nagel (2012), *Review of Financial Studies* 25(7).
-   - **[DRAFT]** Forced liquidations in crypto: candidate sources found (working papers on perpetual-futures liquidation cascades), not yet read. The list of mechanisms is still to be cut to the one or two I would defend.
+   - *Why trends continue (Bull, Bear): attention.* Price moves attract attention, and attention brings in new buyers (or, in a fall, new sellers), which pushes the price further in the same direction.
+     - *Who is on the wrong side:* whoever traded against the trend: those who sold early in a rise, and those who bought the dip too early in a fall.
+     - *Source:* Liu and Tsyvinski (2021), *Review of Financial Studies* 34(6): crypto returns show strong time-series momentum, and proxies for investor attention forecast future returns.
+   - *Why a dip in an uptrend recovers (Correction): payment for providing liquidity.* Sellers who need to get out quickly, such as those panicking, stopped out or liquidated, accept a worse price. Buyers who take the other side are rewarded when the price recovers.
+     - *Who is on the wrong side:* the forced and panicked sellers.
+     - *Source:* Nagel (2012), *Review of Financial Studies* 25(7): returns to short-term reversal strategies act as a reward for providing liquidity, and they are largest in turbulent markets.
+   - *Mechanisms considered and dropped on 17/11/26:* gradual absorption of news (Hong and Stein, 1999), because it was built for stocks, where news such as earnings exists; and forced liquidations, because no peer-reviewed source has been read. They are not used to explain any result after the fact.
+   - *Limit of both sources:* Nagel's evidence is on stocks, and Liu and Tsyvinski's sample ends years before the design period does. Applying them to 2018–2025 daily crypto is an assumption.
    - *Weak point, stated in advance:* a correction and the start of a bear market look the same at the time. The Correction prediction loses exactly when the dip turns out to be the start of a bear market.
 
 3. **Switching.** Following whichever family suits the current regime beats holding either family all the time, after trading costs, trading long or flat only.
@@ -258,7 +260,7 @@ All rules use past data only.
 
 ## 10. Open questions
 
-- **To confirm with the team lead:** that the fund trades crypto through Alpaca, at tier 1, with no shorting. Current assumption from my own understanding (17/11/26). 
+- **To confirm with the team lead:** that the fund trades crypto through Alpaca, at tier 1, with no shorting. Current assumption from my own understanding (17/11/26). **[DECIDE]** date asked and the answer.
 - Did the April–May V1 runs include 2026 data? If so, early 2026 is not unseen.
 - Which V1 version was carried into V2? The October reruns (Sharpe 0.533, 425 orders) match the last May run (0.526, 425 orders), not the 0.94 run. To confirm in the code.
 - What changed between the V1 runs? Recoverable from QuantConnect's stored code.
