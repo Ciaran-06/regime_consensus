@@ -12,7 +12,7 @@ The rules every test follows are in `BACKTESTING.md`. Rule numbers below refer t
    - *Why it should be true:* Each signal is partly right and partly wrong. If their mistakes are largely independent, agreement between them raises confidence, because it is unlikely that all of them are wrong in the same direction at once.
    - *What this needs:* each signal must carry some real information on its own, and their errors must be as weakly correlated as realistically possible.
    - *Type of claim:* this is a claim about a method, so its reason is statistical. There is no losing side of a trade to name.
-   - *Source:* the forecast-combination literature: Timmermann (2006), "Forecast Combinations", in the *Handbook of Economic Forecasting*, volume 1.
+   - *Sources:* the forecast-combination literature: Timmermann (2006), "Forecast Combinations", in the *Handbook of Economic Forecasting*, volume 1. Ensemble voting: Dietterich (2000), "Ensemble Methods in Machine Learning", *Multiple Classifier Systems*, Lecture Notes in Computer Science 1857: a majority vote beats its members when each is better than chance and their errors are diverse. (Dietterich reference from memory; check before citing.)
    - *Weak point, stated in advance:* the six V2 signals are all calculations on the same price series, so their errors may not be independent at all (see Caveats).
 
 2. **Regime dependence.** Which signal family works better depends on the regime. The main test uses four trend states (bull, correction, bear, rebound). High against low volatility is tested separately.
@@ -199,6 +199,14 @@ All rules use past data only.
 
 ## 6. Fixed choices
 
+### Signal Definitions
+
+**Shared rules (apply to all six)**
+- **Input:** daily closes of one coin, from `load_clean`. Each score on day $t$ uses closes up to and including day $t$ only.
+- **Sign convention:** a positive score means "expect the price to rise". Mean-reversion scores are flipped so this holds for them too.
+- **Vote:** +1, −1, or no reading. Only votes are used by the majority rule; scores are used by the correlation pre-check and the single-signal comparison in claim 1.
+- **No reading** also applies to any day without enough history.
+
 | Signal | Family | Parameters | Source |
 |---|---|---|---|
 | RSI relative to 50 | Momentum | 14 days | Standard convention |
@@ -207,6 +215,62 @@ All rules use past data only.
 | RSI extreme | Mean reversion (sign flipped from V2) | 70 / 30 | Standard convention |
 | Bollinger band position | Mean reversion (sign flipped from V2) | 20 days, 2 sd | Standard convention |
 | Price z-score | Mean reversion (sign flipped from V2) | average of 20, 50 and 100 days | Range average, so no single value is tuned |
+
+Notation: $C_t$ is the close on day $t$. $\text{SMA}_n$ and $\sigma_n$ are the mean and standard deviation of the last $n$ closes, including day $t$ (population standard deviation). $\text{EMA}_n$ is an exponential moving average with span $n$.
+#### 1. RSI relative to 50 (momentum)
+- **RSI:** Wilder's 14-day RSI. $\text{RSI}_t = 100 - \dfrac{100}{1 + G_t / L_t}$, where $G_t$ and $L_t$ are Wilder-smoothed averages of daily gains and losses (smoothing factor $1/14$).
+- **Score:** $s_t = (\text{RSI}_t - 50)/50$, between −1 and +1.
+- **Vote:** +1 if $\text{RSI}_t > 50$, −1 if below. No reading at exactly 50.
+- **History needed:** 14 days.
+- **Source:** Wilder (1978), *New Concepts in Technical Trading Systems*. Standard convention.
+
+#### 2. Rate of change (momentum)
+- **Score:** the average of the 5, 10 and 20-day simple returns: $s_t = \tfrac{1}{3}\sum_{k \in \{5,10,20\}} \left(\dfrac{C_t}{C_{t-k}} - 1\right)$.
+- **Vote:** the sign of $s_t$. No reading at exactly zero.
+- **History needed:** 20 days.
+- **Source:** range average, so no single lookback is tuned.
+
+#### 3. MACD histogram (momentum)
+- **MACD line:** $M_t = \text{EMA}_{12}(C)_t - \text{EMA}_{26}(C)_t$. **Signal line:** $S_t = \text{EMA}_9(M)_t$.
+- **Score:** $s_t = (M_t - S_t)/C_t$. Dividing by the price makes it unit-free (the V2 bug fix).
+- **Vote:** the sign of $s_t$. No reading at exactly zero.
+- **History needed:** 34 days (26 for the MACD line, then 9 for its signal line).
+- **Source:** Appel's MACD. Standard convention.
+- *Note:* the histogram is positive when the trend is **strengthening**, not simply when price is rising, so it can disagree with the other two momentum signals during a slowing uptrend.
+
+#### 4. RSI extreme (mean reversion)
+- **RSI:** the same 14-day RSI as signal 1.
+- **Score:** how far RSI is beyond its threshold, flipped: $s_t = (30 - \text{RSI}_t)/30$ if $\text{RSI}_t < 30$; $s_t = -(\text{RSI}_t - 70)/30$ if $\text{RSI}_t > 70$; $s_t = 0$ otherwise.
+- **Vote:** +1 if $\text{RSI}_t < 30$ (oversold, expect a bounce), −1 if $\text{RSI}_t > 70$. **No reading between 30 and 70.**
+- **History needed:** 14 days.
+- **Source:** Wilder (1978): 70 and 30 are the standard overbought and oversold levels.
+
+#### 5. Bollinger band position (mean reversion)
+- **Bands:** middle $\text{SMA}_{20}$, upper and lower $\text{SMA}_{20} \pm 2\sigma_{20}$.
+- **Score:** distance from the middle in half band-widths, flipped: $s_t = -\dfrac{C_t - \text{SMA}_{20}}{2\sigma_{20}}$.
+- **Vote:** +1 if $C_t$ is below the lower band, −1 if above the upper band. **No reading inside the bands.**
+- **History needed:** 20 days.
+- **Source:** Bollinger (2001), *Bollinger on Bollinger Bands*. Standard convention.
+
+#### 6. Price z-score (mean reversion)
+- **Score:** the average of three z-scores, flipped: $s_t = -\tfrac{1}{3}\sum_{n \in \{20,50,100\}} \dfrac{C_t - \text{SMA}_n}{\sigma_n}$.
+- **Vote:** the sign of $s_t$. No reading at exactly zero.
+- **History needed:** 100 days.
+- **Source:** range average, so no single lookback is tuned.
+
+#### Consequences of these definitions, found before any signal was computed
+
+These follow from the formulas alone, not from data.
+
+1. **Bollinger position is the 20-day z-score in disguise.** Its score equals $-\tfrac{1}{2} \times$ the 20-day z-score, which is one of the three parts of signal 6. The two will be highly correlated, so the pre-check will very likely drop Bollinger (z-score is kept by the fixed order). They differ only in voting: Bollinger votes only outside the bands, z-score always.
+2. **The momentum family always has a majority.** All three momentum signals vote nearly every day, and three votes of ±1 always contain a 2-of-3 majority. So for momentum the agreement rule never filters anything: it only decides the direction.
+3. **The mean-reversion family rarely agrees.** Z-score votes every day, but RSI extreme and Bollinger vote only in the tails. A majority needs z-score plus one of the rare signals, so mean reversion speaks on a small share of days.
+4. **RSI is shared across families.** Signals 1 and 4 use the same RSI, so in the tails they always disagree. This is by design: they read the same number as continuation or reversal.
+
+**Decided 17/11/26, before any signal was computed:** keep the six signals and the majority rule, accepting points 1–3.
+- *Reason:* a majority vote is the standard way to combine an ensemble of voters, and it has no number to tune (Dietterich, 2000). Bollinger stays in because the correlation pre-check was set up in advance to handle near-duplicates.
+- *Consequence for claim 1, stated in advance:* in the momentum family the agreement gate is open almost every day, so claim 1 there tests whether the majority **direction** beats a single signal's direction, not whether agreement picks better days to trade. In the mean-reversion family the gate is open only when a tail signal fires, so there it does act as a filter.
+- *Alternatives considered:* requiring all voting signals to agree, and adding a fourth signal per family with a 3-of-4 rule. Not taken. A fourth price-based signal would likely be another near-copy, which fails Dietterich's diversity condition; that idea belongs to the wider signal pool in section 9.
 
 - Agreement is measured **within** each family, because the two families disagree by design in a trend.
 - **Agreement rule:** a family agrees when at least two of its three signals point the same way. A signal giving no reading counts for neither side.
@@ -222,7 +286,8 @@ All rules use past data only.
 - **Maximum 20 V3 runs** before the frozen 2026 test.
 - Every run is logged in `runs.csv` with its date, what changed and its result, including failed and duplicate runs.
 - One change per run.
-- Run's is stored in Documents Folder
+- `runs.csv` is stored in the `Documents` folder and written with `log_run` from `regime_consensus.runlog`, which numbers runs and enforces the budget.
+
 ---
 
 ## 8. Caveats (stated in advance)
@@ -244,11 +309,13 @@ All rules use past data only.
 ## 9. Parked (with the condition for coming back)
 
 - **ML weighting of the two families:** only if claim 3 passes with a simple rule, and only if it then beats that rule out of sample.
-- **A state-space model of the signals in place of the majority rule:** only if claim 1 passes with the majority rule. Each signal is treated as a noisy reading of one hidden trend, estimated each day with a Kalman filter (Kalman, 1960; Harvey, 1989, *Forecasting, Structural Time Series Models and the Kalman Filter*). It weights signals by their noise and allows for shared errors, which majority voting cannot.
-  - Conditions: one pre-declared run, counted in the budget; parameters estimated on past data only, refitted on an expanding window; it must beat the majority rule out of sample.
-  - If the majority rule fails claim 1, this is not a rescue. It becomes a new hypothesis for a later project, written down before testing.
+- **Weighting signals by their information coefficient** (the correlation between a signal's score and the return that follows) in place of the agreement rule: only if claim 1 passes with the agreement rule. Weights estimated on past data only, refitted on an expanding window; one pre-declared run, counted in the budget; it must beat the agreement rule out of sample.
+  - *Stated in advance:* the "forecast combination puzzle" (Timmermann, 2006) is that estimated weights often lose to equal weights out of sample, because the weights are noisy. So this is a real test, not an expected improvement.
+- **A state-space model of the signals in place of the agreement rule:** only if claim 1 passes with the agreement rule. Each signal is treated as a noisy reading of one hidden trend, estimated each day with a Kalman filter (Kalman, 1960; Harvey, 1989, *Forecasting, Structural Time Series Models and the Kalman Filter*). It weights signals by their noise and allows for shared errors, which majority voting cannot.
+  - Conditions: one pre-declared run, counted in the budget; parameters estimated on past data only, refitted on an expanding window; it must beat the agreement rule out of sample.
+  - If the agreement rule fails claim 1, this is not a rescue. It becomes a new hypothesis for a later project, written down before testing.
   - A neural network (for example a temporal transformer) is only considered after the state-space model, and needs more data than daily bars on two coins.
-- **A wider signal pool (volume, funding rates, on-chain activity, attention):** only if the correlation pre-check leaves a family with one signal. Each new signal needs a written source first.
+- **A wider signal pool (volume, funding rates, on-chain activity, attention):** only if the correlation pre-check leaves a family with one signal. Each new signal needs a written source first, and should draw on information other than the closing price, so that its errors differ from the existing signals' (Dietterich's diversity condition).
 - **Hidden Markov model as the regime rule:** only if claim 2 passes with the simple rules, tested as one pre-declared change against them.
 - **Trend and volatility combined:** only if each passes on its own.
 - **Vol-forecast position sizing:** only after claim 3, as one pre-declared change.
