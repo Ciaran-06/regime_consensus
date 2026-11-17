@@ -1,6 +1,6 @@
 # DATA.md | regime_consensus | Data sources, layout, checks and known gaps
 
-Last updated 17/11/26 (BCH gaps checked). After every download, rerun `scripts/00_download.py` and update this file.
+Last updated 17/11/26 (all data checks done: BCH gaps, day boundaries, zero-volume days, largest moves; file structure and download time added). After every download, rerun `scripts/00_download.py` and update this file.
 
 Markers:
 - **[TODO]** = a check still to run. Fill in the result and remove the marker.
@@ -18,7 +18,7 @@ Markers:
 | Fields returned | `time` (start of the day, Unix seconds), `low`, `high`, `open`, `close`, `volume` |
 | Request size | 250 days per request (the API allows at most 300) |
 | Date range requested | 2017-01-01 to 2025-12-31 |
-| Downloaded | 16/11/26. **[TODO]** copy the exact time from `data/raw/coinbase/manifest.csv` |
+| Downloaded | 2026-11-16 20:25 UTC (first block of `data/raw/coinbase/manifest.csv`; the 20:41 block is a rerun that downloaded nothing and matches it exactly) |
 | Script | `scripts/00_download.py`, settings in `src/regime_consensus/config.py` |
 
 - **Provisional source.** Chosen because it matches V2's data. To be revisited once the fund confirms its exchange (NOTES.md, Open questions).
@@ -36,13 +36,34 @@ data/                                     not in git
 │   └── manifest.csv                      one block per download: time, range, coverage
 ├── design/<coin>.parquet                 BTC-USD, ETH-USD
 ├── unseen/<coin>.parquet                 LTC-USD, BCH-USD (deciding); ETC-USD, LINK-USD (secondary)
+├── derived/<name>.parquet                processed tables (labels, signals)
 └── frozen/                               empty until the final test; 2026 is downloaded only then
 ```
 
-**Clean files:** one row per UTC day, columns `date`, `open`, `high`, `low`, `close`, `volume`. Duplicates removed, sorted by date, cut to 2017-01-01 to 2025-12-31. Nothing else has been changed.
+### File structure
 
-- `date` is the UTC calendar day the candle covers, stored without a time zone.
-- `volume` is in units of the coin, not dollars. **[TODO]** confirm against the API docs.
+**Raw** `data/raw/coinbase/<coin>/<from>_<to>.json`
+- A JSON list of candles, newest first, exactly as the API returned them.
+- Each candle: `[time, low, high, open, close, volume]`. `time` is Unix seconds (an integer); the rest are numbers.
+- Load with `load_raw(coins, columns)` from `regime_consensus.io`.
+
+**Clean** `data/design/<coin>.parquet` and `data/unseen/<coin>.parquet`
+- One row per UTC day. Key: `date` (unique within a file). Sorted by `date`, oldest first.
+- Built from raw by removing duplicates, sorting and cutting to 2017-01-01 to 2025-12-31. Nothing else has been changed.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `date` | datetime, no time zone | the UTC day the candle covers |
+| `open` | float | first trade of the day, USD |
+| `high` | float | highest trade, USD |
+| `low` | float | lowest trade, USD |
+| `close` | float | last trade of the day, USD |
+| `volume` | float | amount traded, in units of the coin. **[TODO]** confirm against the API docs |
+
+- Load with `load_clean(coins, columns, start, end)` from `regime_consensus.io`, which adds a `coin` column first. Unseen coins return `date` and `volume` only.
+
+**Derived** `data/derived/<name>.parquet`
+- Processed tables (regime labels, signals). Each is documented here when it is first created.
 
 ---
 
@@ -71,27 +92,54 @@ data/                                     not in git
 - **Cause:** Coinbase paused BCH trading around the Bitcoin Cash split of 15 November 2018 (from memory; confirm against Coinbase's announcement before citing).
 - **Action:** BCH is treated as a new coin from 2018-11-20. No BCH data before that date is used, and its regime labels start on 2019-11-20, after a fresh 365-day warm-up. Reason and cost are in NOTES.md section 5.
 
-### Largest daily moves (BTC and ETH only)
-- List the largest absolute close-to-close moves and check each against a known market event or an exchange glitch.
-- *Reason:* a bad close feeds straight into the 365-day and 30-day trend signs. Coinbase has had exchange-specific glitches; ETH briefly crashed on its exchange in June 2017 (from memory), which is in the warm-up year.
+### Largest daily moves (BTC and ETH only, checked 17/11/26)
+- *Reason:* a bad close feeds straight into the 365-day and 30-day trend signs.
+- *Method* (`Notebooks/big_moves.py`): the 10 largest absolute close-to-close returns per coin, 2017–2025 (warm-up included, since it feeds the trend labels). Each is tested two ways:
+  - **Co-move:** the other coin moved the same way by at least a third as much. Real market events move both coins; a glitch on one feed usually doesn't.
+  - **Reversal:** the next day went the other way by at least half as much. A bad close shows up as a big move followed by a big move back.
+  - **Suspect** = no co-move **and** reversed.
 - Allowed on BTC and ETH because the design period has already been seen. **Not run on the unseen coins** until claim 3.
-- **[TODO]** results:
+- **Result: 0 suspect days out of 20.** No sign of a glitched close.
+- Event names below are from memory. Verify any before citing it.
 
-| Coin | Date | Move | Event or explanation | Action |
-|---|---|---|---|---|
-| | | | | |
+| Coin | Date | Move | Other coin | Next day | Explanation | Action |
+|---|---|---|---|---|---|---|
+| BTC | 2017-07-17 | +16.9% | +22.6% | +3.3% | Market-wide rally | None |
+| BTC | 2017-07-20 | +27.2% | +16.1% | −7.5% | Market-wide rally (Bitcoin SegWit upgrade news) | None |
+| BTC | 2017-09-14 | −15.7% | −18.8% | +15.1% | Market-wide fall (China exchange crackdown news), rebound next day | None |
+| BTC | 2017-12-06 | +20.2% | −5.4% | +23.4% | BTC-only: December 2017 rally | None |
+| BTC | 2017-12-07 | +23.4% | +0.2% | −5.9% | BTC-only: December 2017 rally | None |
+| BTC | 2019-04-02 | +18.5% | +16.8% | +1.5% | Market-wide rally | None |
+| BTC | 2019-10-25 | +16.6% | +13.1% | +6.8% | Market-wide rally | None |
+| BTC | 2020-03-12 | −38.8% | −43.3% | +16.1% | COVID crash | None |
+| BTC | 2020-03-13 | +16.1% | +22.9% | −8.4% | Rebound after the COVID crash | None |
+| BTC | 2021-02-08 | +19.5% | +8.5% | +0.1% | Market-wide rally (Tesla's Bitcoin purchase announced) | None |
+| ETH | 2017-03-15 | +24.3% | +1.2% | +28.9% | ETH-only: March 2017 rally | None |
+| ETH | 2017-03-16 | +28.9% | −7.0% | −2.9% | ETH-only: March 2017 rally | None |
+| ETH | 2017-03-18 | −24.6% | −9.3% | +28.4% | Fall during the March 2017 rally, rebound next day | None |
+| ETH | 2017-03-19 | +28.4% | +5.1% | −2.1% | ETH-only: March 2017 rally | None |
+| ETH | 2017-05-19 | +30.1% | +4.1% | −1.2% | ETH-only: May 2017 rally | None |
+| ETH | 2017-12-12 | +32.6% | +5.0% | +3.7% | ETH-only: December 2017 rally | None |
+| ETH | 2020-03-12 | −43.3% | −38.8% | +22.9% | COVID crash, rebound next day | None |
+| ETH | 2021-01-03 | +26.5% | +2.7% | +6.3% | ETH-only: rally towards $1,000 | None |
+| ETH | 2021-05-19 | −27.6% | −14.3% | +13.6% | Market-wide crash (May 2021) | None |
+| ETH | 2021-05-24 | +26.3% | +11.9% | +2.1% | Rebound after the May 2021 crash | None |
 
-### Zero-volume days (BTC and ETH only)
+- **Eight moves were made by one coin only.** All are known rallies, and none reversed the way a bad close would. Six of the eight are in 2017, the warm-up year, when trading on Coinbase was much thinner.
+- **The June 2017 ETH flash crash on Coinbase does not appear.** It happened within a day, so the daily close was not affected.
+
+### Zero-volume days (all six coins)
 - A day with no trading has a stale price.
-- **[TODO]** count per coin.
+- Checked 17/11/26: no zero-volume days for any of the six coins (date and volume columns only).
 
 ### Day boundaries
-- **[TODO]** confirm every `time` value is exactly midnight UTC, so each candle covers one full UTC day.
+- Checked 17/11/26: every candle for all six coins starts at exactly 00:00 UTC (every time divides by 86,400).
 
 ---
 
 ## 5. Rules for using the data
 
+- **No data in use has a gap.** BCH's four missing days fall before 2018-11-20, so the fork rule below already removes them. The three gap rules that follow are safeguards for any later download, such as the frozen 2026 data.
 - **[DRAFT]** **Gaps are never filled in.** No price is copied forward or interpolated.
 - **[DRAFT]** **Any 5-day forward window that contains a missing day is dropped,** for every coin.
 - **[DRAFT]** **Any trend lookback that contains a missing day** is computed from the closes on either side of the gap; no regime label is assigned on a missing day itself.
@@ -114,5 +162,6 @@ data/                                     not in git
 
 - **One exchange.** Coinbase prices can differ from other venues, especially during outages and flash crashes.
 - **Daily closes at midnight UTC are a convention.** Crypto trades continuously, so another cut-off would give slightly different returns.
-- **Spot prices only.** Shorting needs perpetual futures, whose funding costs are not in this data.
+- **Spot prices only.** The strategy is long or flat (NOTES.md), so shorting and perpetual-futures funding costs are not needed.
 - **The unseen coins are less liquid than BTC and ETH,** and their earlier years on Coinbase may have thinner trading.
+- **2017 prices are thin and volatile,** especially ETH's. 2017 is warm-up only, but it feeds the 365-day trend sign through 2018, so early-2018 labels rest partly on those prices.
