@@ -321,6 +321,7 @@ These follow from the formulas alone, not from data.
 - **Vol-forecast position sizing:** only after claim 3, as one pre-declared change.
 - **Funding-rate and intraday data:** only when a passed claim needs them.
 - **Other regime definitions:** not added after results are seen.
+- **A web dashboard** showing the research (claims, results, run log) and, once live, positions, trades and the kill rule: only after claim 3 and the frozen test pass, as part of the monitoring requirement in section 11.
 
 ---
 

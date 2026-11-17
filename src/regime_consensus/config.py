@@ -39,3 +39,14 @@ FAST_LOOKBACK = 30    # days: 1-month convention
 TIE_SIGN = -1         # a return of exactly zero counts as down: flat is not evidence of an uptrend
 MIN_SPELL_DAYS = 20   # a spell counts towards the evidence rule only if it lasts at least this long
 MIN_SPELLS = 5        # a state's result counts only with at least this many long spells
+
+# --- Signal Rules
+RSI_PERIOD = 14
+RSI_UPPER = 70
+RSI_MID = 50
+RSI_LOWER = 30
+ROC_LOOKBACKS = (5,10,20)
+MACD_FAST, MACD_SLOW, MACD_SIGNAL = 12, 26, 9
+BB_PERIOD = 20
+BB_WIDTH = 2
+Z_LOOKBACKS = (20, 50, 100)
