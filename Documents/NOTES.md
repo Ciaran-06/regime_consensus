@@ -4,10 +4,6 @@
 
 The rules every test follows are in `BACKTESTING.md`. Rule numbers below refer to that file.
 
-Markers still open:
-- **[DECIDE]** = a choice still to be made before any data is loaded.
-- **[DRAFT]** = a proposed wording or number, to confirm or rewrite. Not final until the marker is removed.
-
 ---
 
 ## 1. Hypothesis
