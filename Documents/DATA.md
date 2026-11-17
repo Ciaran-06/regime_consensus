@@ -79,8 +79,7 @@ data/                                     not in git
 | `fast` | float, +1 or −1 | sign of the return over the past 30 days |
 | `state` | text | `BULL`, `CORRECTION`, `BEAR` or `REBOUND` |
 
-- A return of exactly zero counts as −1 (NOTES.md section 3). **[TODO]** record the number of ties per coin and lookback (expected: 0).
-
+- A return of exactly zero would count as −1 (NOTES.md section 3). Checked 17/11/26: **0 ties** for both coins at both lookbacks, so the rule never applied.
 ---
 
 ## 3. Coverage (16/11/26)

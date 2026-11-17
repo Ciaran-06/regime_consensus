@@ -222,7 +222,7 @@ All rules use past data only.
 - **Maximum 20 V3 runs** before the frozen 2026 test.
 - Every run is logged in `runs.csv` with its date, what changed and its result, including failed and duplicate runs.
 - One change per run.
-
+- Run's is stored in Documents Folder
 ---
 
 ## 8. Caveats (stated in advance)

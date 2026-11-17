@@ -7,9 +7,11 @@ so the spec and the code cannot drift apart.
 from datetime import date
 from pathlib import Path
 
+RUN_BUDGET = 20   # NOTES.md section 7
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]   # config.py -> regime_consensus -> src -> project root
 DATA_ROOT = PROJECT_ROOT / "data"
-
+LOG_PATH = PROJECT_ROOT / "Documents" / "runs.csv"
 
 # --- data source (NOTES.md section 5; provisional until the fund confirms its exchange) ---
 EXCHANGE = "coinbase"

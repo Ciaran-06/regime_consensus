@@ -5,3 +5,4 @@ D02,2026-11-17,data,no,2,Notebooks/first_data_inspection.py,"BCH missing dates, 
 D03,2026-11-17,data,no,2,Notebooks/sanity_check.py,"Day boundaries and zero-volume days, all 6 coins","All candles at 00:00 UTC; no zero-volume days"
 D04,2026-11-17,data,no,2,Notebooks/big_moves.py,"10 largest daily moves, BTC and ETH","0 suspect days out of 20"
 R01,2026-11-17,diagnostic,yes,3,scripts/01_regimes.py,"Regime labels and spell count, BTC and ETH, 2018-2025","All 8 coin-states meet the 5-spell minimum; median spell 2-4 days"
+
