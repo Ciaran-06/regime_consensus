@@ -1,8 +1,13 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from regime_consensus.signals import rsi, signal_rsi_50,signal_rate_of_change,signal_macd
 from regime_consensus.signals import signal_rsi_extreme, signal_bollinger_band, signal_z_score
+
+from regime_consensus.config import MOMENTUM_SIGNALS, REVERSION_SIGNALS
+from regime_consensus.signals import SIGNALS, build_signals, signal_rsi_50, signal_z_score
+
 def daily(values):
     """A made-up price series with one row per day."""
     return pd.Series(values, index=pd.date_range("2018-01-01", periods=len(values)), dtype=float)
@@ -250,3 +255,58 @@ def test_z_score_no_lookahead():
     changed = prices.copy()
     changed.iloc[130:] = changed.iloc[130:] * 2
     pd.testing.assert_frame_equal(signal_z_score(prices).iloc[:130], signal_z_score(changed).iloc[:130])
+
+
+def two_coin_prices(days=150):
+    """Made-up prices for two coins on very different scales, one row per coin per day."""
+    dates = pd.date_range("2017-01-01", periods=days)
+    rows = []
+    for coin, start, seed in [("AAA-USD", 100.0, 1), ("BBB-USD", 5.0, 2)]:
+        steps = np.random.default_rng(seed).normal(0, 0.03, days)
+        close = start * np.exp(np.cumsum(steps))
+        rows.append(pd.DataFrame({"coin": coin, "date": dates, "close": close}))
+    return pd.concat(rows, ignore_index=True)
+
+
+def test_signal_names_match_config():
+    assert set(MOMENTUM_SIGNALS) | set(REVERSION_SIGNALS) == set(SIGNALS)
+    assert not set(MOMENTUM_SIGNALS) & set(REVERSION_SIGNALS)
+
+
+def test_build_signals_columns():
+    result = build_signals(two_coin_prices())
+    expected = ["coin", "date"]
+    for name in SIGNALS:
+        expected += [f"{name}_score", f"{name}_vote"]
+    expected += ["momentum_vote", "reversion_vote"]
+    assert list(result.columns) == expected
+
+
+def test_build_signals_one_row_per_coin_per_day():
+    prices = two_coin_prices()
+    result = build_signals(prices)
+    assert len(result) == len(prices)
+    assert not result.duplicated(["coin", "date"]).any()
+
+
+def test_build_signals_each_coin_uses_only_its_own_prices():
+    prices = two_coin_prices()
+    result = build_signals(prices)
+    for coin in ["AAA-USD", "BBB-USD"]:
+        close = prices[prices["coin"] == coin].set_index("date")["close"]
+        built = result[result["coin"] == coin].set_index("date")
+        pd.testing.assert_series_equal(built["rsi_50_score"], signal_rsi_50(close)["score"], check_names=False)
+        pd.testing.assert_series_equal(built["z_score_vote"], signal_z_score(close)["vote"], check_names=False)
+
+
+def test_build_signals_rejects_a_missing_day():
+    prices = two_coin_prices()
+    gap = prices.drop(index=prices[prices["coin"] == "AAA-USD"].index[50])
+    with pytest.raises(ValueError):
+        build_signals(gap)
+
+
+def test_build_signals_family_votes_only_plus_minus_one_or_nan():
+    result = build_signals(two_coin_prices())
+    for column in ["momentum_vote", "reversion_vote"]:
+        assert set(result[column].dropna().unique()) <= {1, -1}

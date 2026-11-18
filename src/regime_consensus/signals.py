@@ -6,6 +6,11 @@ from regime_consensus.config import ROC_LOOKBACKS
 from regime_consensus.config import MACD_FAST, MACD_SIGNAL, MACD_SLOW
 from regime_consensus.config import BB_PERIOD, BB_WIDTH
 from regime_consensus.config import Z_LOOKBACKS
+from regime_consensus.config import MOMENTUM_SIGNALS, REVERSION_SIGNALS
+
+from regime_consensus.regime_modeling import _check_daily_index
+
+from regime_consensus.agreement import family_vote
 
 def sign_vote(score: pd.Series) -> pd.Series:
     return np.sign(score).replace(0, np.nan)
@@ -84,3 +89,31 @@ def signal_z_score(close: pd.Series, lookbacks: tuple[int,...] = Z_LOOKBACKS) ->
     score = -z_table.mean(axis=1, skipna=False)
     vote = sign_vote(score)
     return pd.DataFrame({"score": score, "vote": vote})
+
+SIGNALS = {"rsi_50": signal_rsi_50, "rate_of_change": signal_rate_of_change, "macd": signal_macd, 
+           "rsi_extreme": signal_rsi_extreme, "bollinger": signal_bollinger_band, "z_score":signal_z_score}
+
+def build_signals(prices: pd.DataFrame) -> pd.DataFrame:
+    frames = []
+
+    for coin, coin_prices in prices.groupby("coin"):
+        close = coin_prices.set_index("date")["close"].sort_index()
+
+        _check_daily_index(close)
+
+        signal_tables = []                              # one list per coin
+        for name, function in SIGNALS.items():
+            result = function(close)                    # a table with "score" and "vote"
+            result = result.add_prefix(f"{name}_")      # -> "rsi_50_score", "rsi_50_vote"
+            signal_tables.append(result)
+
+        table = pd.concat(signal_tables, axis=1)        # 12 columns side by side, one row per date
+
+        table["momentum_vote"] = family_vote(table[[f"{n}_vote" for n in MOMENTUM_SIGNALS]])
+        table["reversion_vote"] = family_vote(table[[f"{n}_vote" for n in REVERSION_SIGNALS]])
+
+        table = table.reset_index()
+        table.insert(0,"coin", coin)
+        frames.append(table)
+
+    return pd.concat(frames, ignore_index=True)
