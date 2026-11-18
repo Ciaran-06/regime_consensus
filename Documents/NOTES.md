@@ -1,6 +1,6 @@
-# NOTES.md | regime_consensus | Last updated 18/11/26 (correlation pre-check, run R03)
+# NOTES.md | regime_consensus | Last updated 18/11/26 (runs R04 and R05: bug in the vote rebuild)
 
-**Status:** Spec agreed on 16/11/26; all `[DRAFT]` items closed on 17/11/26. Data downloaded and checked. Regime labels built (run R01, 17/11/26). Six signals and both family votes built (run R02, 18/11/26). Correlation pre-check done (run R03, 18/11/26): rate of change and Bollinger dropped. Family votes to be rebuilt with the kept signals (run R04). No forward returns computed yet. Results are recorded in section 12 as they come in.
+**Status:** Spec agreed on 16/11/26; all `[DRAFT]` items closed on 17/11/26. Data downloaded and checked. Regime labels built (run R01, 17/11/26). Six signals and both family votes built (run R02, 18/11/26). Correlation pre-check done (run R03, 18/11/26): rate of change and Bollinger dropped. The first two rebuilds of the family votes (runs R04 and R05) had a bug and are invalid; the rebuild is rerun as R06. No forward returns computed yet. Results are recorded in section 12 as they come in.
 
 The rules every test follows are in `BACKTESTING.md`. Rule numbers below refer to that file.
 
@@ -136,7 +136,8 @@ All rules use past data only.
 - **Calm and turbulent periods** use the volatility rule in section 3: turbulent if 30-day realised volatility is above its own median over the previous 365 days, calm otherwise. These two matrices are **reported only**; the decision uses the full design period.
 - **Either coin decides:** two signals are near-copies if their correlation is above 0.7 on **either** BTC or ETH. *Reason:* one set of signals is used for both coins, and the rule exists to stop one signal being counted twice, so it errs towards dropping.
 - **Order of checking:** within each family, go down the priority order (momentum: MACD, rate of change, RSI; mean reversion: z-score, Bollinger, RSI extreme). Keep each signal unless it is a near-copy of a signal already kept. *Reason:* gives the same answer however many signals are correlated with each other.
-- **If a signal is dropped:** it is removed from `MOMENTUM_CANDIDATES` or `REVERSION_CANDIDATES` in `config.py`, and the family votes are rebuilt. The rebuild is a logged diagnostic run.
+- **If a signal is dropped:** it is removed from the lists the family votes use (`MOMENTUM_SIGNALS` or `REVERSION_SIGNALS` in `config.py`), and the family votes are rebuilt. The rebuild is a logged diagnostic run.
+  - *Config note added 18/11/26, after R03:* the full lists of three signals per family are kept in `config.py` as `MOMENTUM_CANDIDATES` and `REVERSION_CANDIDATES`, as a record of what entered the pre-check. This changes names in the code only, not the rule.
 
 ### Claim 1: agreement
 - **Metric:** mean return over the next 5 days after a signal, in the direction the signal points.
@@ -446,3 +447,22 @@ Results are added here in run order. Each entry names its run in `runs.csv`. Not
 - Mean-reversion agreement is at most 0.21 (the R02 rate), because a vote now needs RSI extreme, which is one of the two tail signals that made up that 0.21.
 - On nearly every day RSI extreme votes, z-score points the same way, because an RSI below 30 or above 70 implies a price far from its recent averages.
 - **Next run:** set `MOMENTUM_SIGNALS = ["rsi_50", "macd"]` and `REVERSION_SIGNALS = ["rsi_extreme", "z_score"]` in `config.py` and rerun `scripts/02_signals.py`, logged as R04 (section 4).
+
+
+### R04 and R05 — Vote rebuild, invalid because of a bug (18/11/26, diagnostic)
+
+- **Script:** `scripts/02_signals.py`, run twice with identical code and identical output. Both count towards the budget.
+- **Predictions written into the run before it ran:** the three listed at the end of R03.
+
+| Run | What happened | Status |
+|---|---|---|
+| R04 | `build_signals` still built the family votes from `MOMENTUM_CANDIDATES` and `REVERSION_CANDIDATES` (all three signals per family). The two lines were changed by mistake when the config lists were renamed. | Invalid |
+| R05 | An accidental second run of the same code. No new information. | Invalid (duplicate) |
+
+- **How the bug was found:** the agreement rates came out exactly as in R02 (momentum 1.00, reversion 0.21 on both coins). With two signals per family that is not possible: RSI extreme voted on 412 (BTC) and 413 (ETH) of 2,922 days, so reversion agreement could be at most $413/2922 \approx 0.14$. The predictions written before the run are what exposed it.
+- **What still stands:** prediction 3 held. Z-score pointed the same way on **every** day RSI extreme voted (412 of 412 on BTC, 413 of 413 on ETH). This number reads the two signals' own vote columns, not the family vote, so the bug does not affect it. On those days a reversion vote is therefore simply RSI extreme's vote, and z-score adds no filtering in the tails.
+- **Momentum and reversion agreement predictions:** not yet tested. They are tested by the rerun.
+- **Fix:** the two lines in `build_signals` changed back to `MOMENTUM_SIGNALS` and `REVERSION_SIGNALS`, and a unit test added that checks the family votes against the signals listed in `config.py`, confirmed to fail on the old lines. The fix makes the code match section 4 and was not chosen because of any result, so the rerun counts (section 4).
+- **Safeguard added to the run log:** `check_new_run` refuses to start a script whose `script` and `what_changed` match a run already in `runs.csv`. It is called at the top of each script, before any data is loaded, so a duplicate is stopped before anything is computed or seen. A deliberate rerun must say why in `what_changed`.
+- **Cost:** two runs of budget (5 of 20 used).
+- **Next run (R06):** rerun `scripts/02_signals.py` with `what_changed` stating that it reruns R04 after the bug fix. Same predictions as R04.

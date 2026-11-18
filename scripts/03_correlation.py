@@ -11,11 +11,17 @@ from regime_consensus.config import (DESIGN_COINS, DESIGN_END, DESIGN_START,
                                      VOLATILITY_REGIMES)
 from regime_consensus.io import load_clean, load_derived, save_derived
 from regime_consensus.regime_modeling import label_volatility
-from regime_consensus.runlog import log_run
+from regime_consensus.runlog import check_new_run, log_run
 from regime_consensus.signal_selection import select_signals
 from regime_consensus.signals import SIGNALS
 
+SCRIPT = "scripts/03_correlation.py"
+RUN_TYPE = "diagnostic"
+PHASE = "5"
 PREDICTION = "Predicted before running: Bollinger dropped as a near-copy of z-score; other pairs not predicted."
+WHAT_CHANGED = f"Correlation pre-check on six signal scores, BTC and ETH, 2018-2025. {PREDICTION}"
+
+check_new_run(RUN_TYPE, SCRIPT, WHAT_CHANGED)
 
 signals = load_derived("signals")
 pre_merge_len = len(signals)
@@ -97,10 +103,4 @@ summary = (
 )
 print(summary)
 
-log_run(
-    "diagnostic",
-    phase="5",
-    script="scripts/03_correlation.py",
-    what_changed=f"Correlation pre-check on six signal scores, BTC and ETH, 2018-2025. {PREDICTION}",
-    result=summary,
-)
+log_run(RUN_TYPE, phase=PHASE, script=SCRIPT, what_changed=WHAT_CHANGED, result=summary)

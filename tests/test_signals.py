@@ -4,8 +4,9 @@ import pytest
 
 from regime_consensus.signals import rsi, signal_rsi_50,signal_rate_of_change,signal_macd
 from regime_consensus.signals import signal_rsi_extreme, signal_bollinger_band, signal_z_score
-
+from regime_consensus.config import FAMILIES
 from regime_consensus.config import MOMENTUM_CANDIDATES, REVERSION_CANDIDATES
+from regime_consensus.config import FAMILIES, MOMENTUM_SIGNALS, REVERSION_SIGNALS
 from regime_consensus.signals import SIGNALS, build_signals, signal_rsi_50, signal_z_score
 
 def daily(values):
@@ -271,6 +272,9 @@ def two_coin_prices(days=150):
 def test_signal_names_match_config():
     assert set(MOMENTUM_CANDIDATES) | set(REVERSION_CANDIDATES) == set(SIGNALS)
     assert not set(MOMENTUM_CANDIDATES) & set(REVERSION_CANDIDATES)
+    assert set(MOMENTUM_SIGNALS) <= set(MOMENTUM_CANDIDATES)
+    assert set(REVERSION_SIGNALS) <= set(REVERSION_CANDIDATES)
+    assert FAMILIES == {"momentum": MOMENTUM_SIGNALS, "reversion": REVERSION_SIGNALS}
 
 
 def test_build_signals_columns():
@@ -310,3 +314,23 @@ def test_build_signals_family_votes_only_plus_minus_one_or_nan():
     result = build_signals(two_coin_prices())
     for column in ["momentum_vote", "reversion_vote"]:
         assert set(result[column].dropna().unique()) <= {1, -1}
+
+
+@pytest.mark.parametrize("family", list(FAMILIES))
+def test_family_votes_use_config_signals(family):
+    # NOTES.md section 4: with two signals, a family votes only when both vote the same way
+    result = build_signals(two_coin_prices(days=400))
+    first, second = (result[f"{name}_vote"] for name in FAMILIES[family])
+    family_votes = result[f"{family}_vote"]
+
+    either_missing = first.isna() | second.isna()
+    agree = ~either_missing & (first == second)
+    disagree = ~either_missing & (first != second)
+
+    assert (family_votes[agree] == first[agree]).all()
+    assert family_votes[disagree].isna().all()
+    assert family_votes[either_missing].isna().all()
+
+    assert agree.any() and either_missing.any(), "random prices gave no days to check"
+    if family == "momentum":
+        assert disagree.any(), "random prices gave no disagreeing days to check"

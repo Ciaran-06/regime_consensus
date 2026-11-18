@@ -1,5 +1,7 @@
-"""The run log (runs.csv). Every analysis script calls log_run at the end, so no run goes unrecorded.
+"""The run log (runs.csv). Every analysis script calls check_new_run at the top and log_run at the end,
+so no run goes unrecorded and no run is repeated by accident.
 
+    check_new_run(run_type, script, what_changed)            refuse a duplicate or over-budget run, before any data is loaded
     log_run(run_type, phase, script, what_changed, result)   append one row, return its run ID
     budget_used()                                            counted runs so far
 
@@ -49,20 +51,52 @@ def _next_run_id(log: pd.DataFrame, prefix: str) -> str:
     return f"{prefix}{next_number:02d}"
 
 
-def budget_used() -> int:
-    """Number of runs so far that count towards the budget."""
-    log = _read_log()
+def _run_type_info(run_type: str) -> tuple[str, bool]:
+    if run_type not in RUN_TYPES:
+        raise ValueError(f"run_type must be one of {list(RUN_TYPES)}, got {run_type!r}")
+    return RUN_TYPES[run_type]
+
+
+def _used(log: pd.DataFrame) -> int:
     return int((log["counts_toward_budget"] == "yes").sum())
 
 
+def budget_used() -> int:
+    """Number of runs so far that count towards the budget."""
+    return _used(_read_log())
+
+
+def check_new_run(run_type: RunType, script: str, what_changed: str) -> None:
+    """Call at the top of a script, before loading any data.
+
+    Raises if the budget is used up, or if runs.csv already has a run with the same script and
+    what_changed. A deliberate rerun must say why in what_changed, which makes it a new entry.
+    """
+    _, counts = _run_type_info(run_type)
+    log = _read_log()
+
+    if counts and _used(log) >= RUN_BUDGET:
+        raise RuntimeError(f"Run budget used up ({_used(log)} of {RUN_BUDGET}). Stop and write up (BACKTESTING.md rule 11).")
+
+    duplicates = log[(log["script"] == script) & (log["what_changed"] == what_changed)]
+    if not duplicates.empty:
+        ids = ", ".join(duplicates["run_id"])
+        raise RuntimeError(
+            f"{script} has already been run with this what_changed ({ids}). "
+            "If this is a deliberate rerun, say why in what_changed."
+        )
+
+
 def log_run(run_type: RunType, phase: str, script: str, what_changed: str, result: str) -> str:
-    """Append one run to runs.csv and return its run ID."""
-    if run_type not in RUN_TYPES:
-        raise ValueError(f"run_type must be one of {list(RUN_TYPES)}, got {run_type!r}")
-    prefix, counts = RUN_TYPES[run_type]
+    """Append one run to runs.csv and return its run ID.
+
+    Never refuses a duplicate: by the time this is called the run has happened, so it must be recorded.
+    Duplicates are stopped earlier, by check_new_run.
+    """
+    prefix, counts = _run_type_info(run_type)
 
     log = _read_log()
-    used = int((log["counts_toward_budget"] == "yes").sum())
+    used = _used(log)
     if counts and used >= RUN_BUDGET:
         raise RuntimeError(f"Run budget used up ({used} of {RUN_BUDGET}). Stop and write up (BACKTESTING.md rule 11).")
 

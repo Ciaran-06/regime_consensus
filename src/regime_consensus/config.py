@@ -16,7 +16,7 @@ LOG_PATH = PROJECT_ROOT / "Documents" / "runs.csv"
 # --- data source (NOTES.md section 5; provisional until the fund confirms its exchange) ---
 EXCHANGE = "coinbase"
 
-RAW = DATA_ROOT / "raw" / EXCHANGE      # put this line after EXCHANGE is defined
+RAW = DATA_ROOT / "raw" / EXCHANGE     
 DESIGN = DATA_ROOT / "design"
 UNSEEN = DATA_ROOT / "unseen"
 FROZEN = DATA_ROOT / "frozen"
@@ -30,7 +30,6 @@ FROZEN_START = date(2026, 1, 1)   # never downloaded or opened until the final t
 
 # --- coins ---
 DESIGN_COINS = ["BTC-USD", "ETH-USD"]
-# Provisional list: the final one is fixed after checking each coin's first date (NOTES.md section 5)
 UNSEEN_COINS = ["LTC-USD", "BCH-USD", "LINK-USD", "ETC-USD"]
 
 # --- volatility rule (NOTES.md section 3) ---
@@ -63,6 +62,7 @@ REVERSION_CANDIDATES = ["rsi_extreme", "bollinger", "z_score"]
 
 MOMENTUM_SIGNALS = ["rsi_50", "macd"]
 REVERSION_SIGNALS = ["rsi_extreme", "z_score"]
+FAMILIES = {"momentum": MOMENTUM_SIGNALS, "reversion": REVERSION_SIGNALS}
 # --- Signal Correlation
 CORR_THRESHOLD = 0.7
 MOMENTUM_PRIORITY = ["macd", "rate_of_change", "rsi_50"]           # keep order: longest lookback first
