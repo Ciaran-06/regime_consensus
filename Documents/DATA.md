@@ -1,6 +1,6 @@
 # DATA.md | regime_consensus | Data sources, layout, checks and known gaps
 
-Last updated 18/11/26 (`signals` derived table added). After every download, rerun `scripts/00_download.py` and update this file.
+Last updated 18/11/26 (`volatility` and `correlations` derived tables added, run R03). After every download, rerun `scripts/00_download.py` and update this file.
 
 Markers:
 - **[TODO]** = a check still to run. Fill in the result and remove the marker.
@@ -36,7 +36,7 @@ data/                                     not in git
 │   └── manifest.csv                      one block per download: time, range, coverage
 ├── design/<coin>.parquet                 BTC-USD, ETH-USD
 ├── unseen/<coin>.parquet                 LTC-USD, BCH-USD (deciding); ETC-USD, LINK-USD (secondary)
-├── derived/<name>.parquet                processed tables (labels, signals)
+├── derived/<name>.parquet                processed tables (labels, signals, volatility, correlations)
 └── frozen/                               empty until the final test; 2026 is downloaded only then
 ```
 
@@ -63,7 +63,7 @@ data/                                     not in git
 - Load with `load_clean(coins, columns, start, end)` from `regime_consensus.io`, which adds a `coin` column first. Unseen coins return `date` and `volume` only.
 
 **Derived** `data/derived/<name>.parquet`
-- Processed tables (regime labels, signals). Each is documented here when it is first created.
+- Processed tables (regime labels, signals, volatility labels, correlations). Each is documented here when it is first created.
 - Load with `load_derived(name, columns)` from `regime_consensus.io`.
 
 **`regimes`** `data/derived/regimes.parquet` (run R01, 17/11/26)
@@ -93,11 +93,43 @@ data/                                     not in git
 | `date` | datetime, no time zone | the UTC day |
 | `<signal>_score` | float | the signal's strength and direction; positive means "expect the price to rise" |
 | `<signal>_vote` | float: +1, −1 or NaN | the signal's direction, or NaN for no reading |
-| `momentum_vote` | float: +1, −1 or NaN | majority of the three momentum votes, NaN if no majority |
-| `reversion_vote` | float: +1, −1 or NaN | majority of the three mean-reversion votes, NaN if no majority |
+| `momentum_vote` | float: +1, −1 or NaN | majority of the votes of the signals in `MOMENTUM_CANDIDATES`, NaN if no majority |
+| `reversion_vote` | float: +1, −1 or NaN | majority of the votes of the signals in `REVERSION_SIGNALS`, NaN if no majority |
 
 - `<signal>` is one of `rsi_50`, `rate_of_change`, `macd` (momentum) and `rsi_extreme`, `bollinger`, `z_score` (mean reversion), in that column order.
 - Checked 18/11/26: **0 missing scores** for every signal in 2018–2025, so no flat-RSI days.
+- **The family votes in the R02 table use all three signals per family.** The correlation pre-check (R03) dropped `rate_of_change` and `bollinger`, so the table is rebuilt in R04 with family votes from `rsi_50` and `macd` (momentum) and `rsi_extreme` and `z_score` (mean reversion); with two signals the majority rule means both agree. All six scores and votes stay in the table, so the dropped signals can still be reported. Update this entry after R04.
+
+**`volatility`** `data/derived/volatility.parquet` (run R03, 18/11/26)
+- Built by `scripts/03_correlation.py` with `label_volatility` from `src/regime_consensus/regime_modeling.py`. Rule in NOTES.md section 3.
+- BTC and ETH, 2018-01-01 to 2025-12-31. One row per coin per day: 2,922 rows per coin, 5,844 in total. Key: (`coin`, `date`).
+- Labels are computed on 2017–2025 closes, then cut to 2018 onwards.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `coin` | text | e.g. `BTC-USD` |
+| `date` | datetime, no time zone | the UTC day |
+| `volatility` | text or NaN | `HIGH` (turbulent) if 30-day realised volatility of daily log returns is above its median over the previous 365 days, `LOW` (calm) otherwise; NaN before enough history |
+
+- **The first label is on 2018-01-31.** The 365-day median of 30-day volatility needs 395 days of closes from 2017-01-01, so 2018-01-01 to 2018-01-30 have no label (30 days per coin).
+- Checked 18/11/26: BTC 1,625 calm, 1,267 turbulent, 30 unlabelled; ETH 1,568 calm, 1,324 turbulent, 30 unlabelled.
+- The median uses the 365 days **before** day $t$ (shifted by one day), so day $t$'s volatility is never compared with itself.
+
+**`correlations`** `data/derived/correlations.parquet` (run R03, 18/11/26)
+- Built by `scripts/03_correlation.py`. Spearman rank correlations of the six signal scores, per coin, on all days, calm days and turbulent days (the `volatility` table above).
+- 216 rows: 2 coins × 3 periods × 36 ordered signal pairs. Key: (`coin`, `period`, `signal_a`, `signal_b`).
+- Long format: each pair appears twice (a, b and b, a), and each signal with itself has `rho` = 1.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `coin` | text | e.g. `BTC-USD` |
+| `period` | text | `all`, `calm` or `turbulent` |
+| `signal_a` | text | one of the six signal names |
+| `signal_b` | text | one of the six signal names |
+| `rho` | float | Spearman rank correlation between the two signals' daily scores in that period |
+
+- Only the `all` rows decide which signals are kept (NOTES.md section 4); `calm` and `turbulent` are reported only.
+- Days in each period: all 2,922 per coin; calm and turbulent as in the `volatility` table.
 
 ---
 

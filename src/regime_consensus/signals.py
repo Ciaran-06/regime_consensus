@@ -6,7 +6,7 @@ from regime_consensus.config import ROC_LOOKBACKS
 from regime_consensus.config import MACD_FAST, MACD_SIGNAL, MACD_SLOW
 from regime_consensus.config import BB_PERIOD, BB_WIDTH
 from regime_consensus.config import Z_LOOKBACKS
-from regime_consensus.config import MOMENTUM_SIGNALS, REVERSION_SIGNALS
+from regime_consensus.config import MOMENTUM_CANDIDATES, REVERSION_CANDIDATES
 
 from regime_consensus.regime_modeling import _check_daily_index
 
@@ -109,8 +109,8 @@ def build_signals(prices: pd.DataFrame) -> pd.DataFrame:
 
         table = pd.concat(signal_tables, axis=1)        # 12 columns side by side, one row per date
 
-        table["momentum_vote"] = family_vote(table[[f"{n}_vote" for n in MOMENTUM_SIGNALS]])
-        table["reversion_vote"] = family_vote(table[[f"{n}_vote" for n in REVERSION_SIGNALS]])
+        table["momentum_vote"] = family_vote(table[[f"{n}_vote" for n in MOMENTUM_CANDIDATES]])
+        table["reversion_vote"] = family_vote(table[[f"{n}_vote" for n in REVERSION_CANDIDATES]])
 
         table = table.reset_index()
         table.insert(0,"coin", coin)

@@ -36,6 +36,7 @@ UNSEEN_COINS = ["LTC-USD", "BCH-USD", "LINK-USD", "ETC-USD"]
 # --- volatility rule (NOTES.md section 3) ---
 VOL_WINDOW = 30            # days of returns in realised volatility
 VOL_MEDIAN_WINDOW = 365    # days of past volatility in the median
+VOLATILITY_REGIMES = {"HIGH": "turbulent", "LOW": "calm"}
 
 # --- regime rules (NOTES.md section 3) ---
 SLOW_LOOKBACK = 365   # days: 12-month convention (Goulding, Harvey and Mazzoleni, 2023)
@@ -57,9 +58,11 @@ Z_LOOKBACKS = (20, 50, 100)
 
 # --- Overall Agreement
 FAMILY_MIN_AGREE = 2
-MOMENTUM_SIGNALS = ["rsi_50", "rate_of_change", "macd"]
-REVERSION_SIGNALS = ["rsi_extreme", "bollinger", "z_score"]
+MOMENTUM_CANDIDATES = ["rsi_50", "rate_of_change", "macd"]
+REVERSION_CANDIDATES = ["rsi_extreme", "bollinger", "z_score"]
 
+MOMENTUM_SIGNALS = ["rsi_50", "macd"]
+REVERSION_SIGNALS = ["rsi_extreme", "z_score"]
 # --- Signal Correlation
 CORR_THRESHOLD = 0.7
 MOMENTUM_PRIORITY = ["macd", "rate_of_change", "rsi_50"]           # keep order: longest lookback first

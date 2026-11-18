@@ -1,6 +1,6 @@
-# NOTES.md | regime_consensus | Last updated 18/11/26 (pre-check details settled)
+# NOTES.md | regime_consensus | Last updated 18/11/26 (correlation pre-check, run R03)
 
-**Status:** Spec agreed on 16/11/26; all `[DRAFT]` items closed on 17/11/26. Data downloaded and checked. Regime labels built (run R01, 17/11/26). Six signals and both family votes built (run R02, 18/11/26). No forward returns computed yet. Results are recorded in section 12 as they come in.
+**Status:** Spec agreed on 16/11/26; all `[DRAFT]` items closed on 17/11/26. Data downloaded and checked. Regime labels built (run R01, 17/11/26). Six signals and both family votes built (run R02, 18/11/26). Correlation pre-check done (run R03, 18/11/26): rate of change and Bollinger dropped. Family votes to be rebuilt with the kept signals (run R04). No forward returns computed yet. Results are recorded in section 12 as they come in.
 
 The rules every test follows are in `BACKTESTING.md`. Rule numbers below refer to that file.
 
@@ -136,7 +136,7 @@ All rules use past data only.
 - **Calm and turbulent periods** use the volatility rule in section 3: turbulent if 30-day realised volatility is above its own median over the previous 365 days, calm otherwise. These two matrices are **reported only**; the decision uses the full design period.
 - **Either coin decides:** two signals are near-copies if their correlation is above 0.7 on **either** BTC or ETH. *Reason:* one set of signals is used for both coins, and the rule exists to stop one signal being counted twice, so it errs towards dropping.
 - **Order of checking:** within each family, go down the priority order (momentum: MACD, rate of change, RSI; mean reversion: z-score, Bollinger, RSI extreme). Keep each signal unless it is a near-copy of a signal already kept. *Reason:* gives the same answer however many signals are correlated with each other.
-- **If a signal is dropped:** it is removed from `MOMENTUM_SIGNALS` or `REVERSION_SIGNALS` in `config.py`, and the family votes are rebuilt. The rebuild is a logged diagnostic run.
+- **If a signal is dropped:** it is removed from `MOMENTUM_CANDIDATES` or `REVERSION_CANDIDATES` in `config.py`, and the family votes are rebuilt. The rebuild is a logged diagnostic run.
 
 ### Claim 1: agreement
 - **Metric:** mean return over the next 5 days after a signal, in the direction the signal points.
@@ -401,3 +401,48 @@ Results are added here in run order. Each entry names its run in `runs.csv`. Not
 - **Mean reversion agrees on about one day in five** (roughly 610 days per coin), confirming consequence 3. In that family the agreement rule does act as a filter, and there are enough days to test claims 1 and 2.
 - **No missing scores in 2018–2025** for any signal, so the 2017 warm-up covers every lookback and there were no flat-RSI days.
 - **Consequence 1 confirmed in code before this run:** the unit test `test_z_score_20_day_is_twice_bollinger` shows the 20-day z-score is exactly twice the Bollinger score on every day of a random price series. Real-data correlations come in phase 5.
+
+
+### R03 — Correlation pre-check (18/11/26, diagnostic)
+
+- **Script:** `scripts/03_correlation.py`. Saved as `data/derived/volatility.parquet` and `data/derived/correlations.parquet` (see `DATA.md`).
+- **Sample:** BTC and ETH, 2018-01-01 to 2025-12-31 (2,922 days per coin). Spearman rank correlations of the six daily scores.
+- **Uses no forward returns,** so it cannot pass or fail a claim.
+- **Prediction written into the run before it ran:** Bollinger dropped as a near-copy of z-score; no other pair predicted.
+
+**Decision (all days, rule in section 4):**
+
+| Family | Kept | Dropped | Deciding correlation |
+|---|---|---|---|
+| Momentum | MACD, RSI relative to 50 | Rate of change | with MACD: 0.71 (BTC), 0.70 (ETH) |
+| Mean reversion | Z-score, RSI extreme | Bollinger | with z-score: 0.87 (BTC), 0.87 (ETH) |
+
+- **The prediction held:** Bollinger was dropped, as consequence 1 in section 6 expected.
+- **Rate of change was dropped on a knife-edge.** Its correlation with MACD is just above 0.7 on BTC and rounds to 0.70 on ETH. A slightly different lookback could have kept it. The rule is not changed: choosing the signal set after seeing these numbers would be tuning on the design period.
+- **Neither family is left with one signal,** so claim 1 can be tested in both families and the wider signal pool (section 9) stays parked.
+
+**Within-family correlations that were kept (all days):** RSI relative to 50 with MACD 0.54 on both coins; z-score with RSI extreme 0.59 (BTC) and 0.58 (ETH). Both are below 0.7, but still well above zero, so the kept signals' errors are not independent (caveat in section 8).
+
+**Calm and turbulent periods (reported only):**
+
+| Coin | Calm days | Turbulent days | Unlabelled days |
+|---|---|---|---|
+| BTC | 1,625 | 1,267 | 30 |
+| ETH | 1,568 | 1,324 | 30 |
+
+- Volatility labels start on 2018-01-31; the 30 days before have no label because the 365-day median of 30-day volatility needs 395 days of closes from 2017-01-01.
+- **Correlations barely change between calm and turbulent periods** (no pair moves by more than about 0.1). Which signals duplicate each other does not depend on the volatility state. The expectation in section 4 that signals move together more in a crash is not visible in these scores.
+
+**Findings recorded for later claims:**
+
+1. **The two families are close to mirror images.** Across families, RSI relative to 50 and z-score correlate at $\rho = -0.98$ on both coins, and MACD and Bollinger at $-0.74$. The pre-check compares signals within a family only, so it does not act on this. Consequence for claim 2: on days when both families speak, "mean reversion" mostly means betting against the recent move, so the family comparison is close to asking whether momentum's direction loses in Corrections and wins in Bull and Bear. RSI extreme is the least related signal ($|\rho|$ between 0.33 and 0.66 with every other signal), and because reversion now needs RSI extreme to vote, the reversion family only speaks in the tails.
+2. **With two signals per family, the majority rule becomes unanimity.** This was set in advance in section 4 ("if a family is left with two signals, it agrees when both point the same way"), so no rule changes. It does change three things written in section 6 before any data:
+   - **Consequence 2 no longer holds.** MACD and RSI relative to 50 can disagree, so momentum will not agree on every day. In momentum, the agreement gate now filters days, as it already did in mean reversion.
+   - **The weak point under the agreement rule in section 6** (majority is weaker than all signals agreeing) no longer applies: with two signals the two are the same rule.
+   - **Ensemble size.** Dietterich's argument for a majority vote is about many diverse voters. Two voters with correlation 0.54–0.59 give a much weaker test of claim 1 than six independent ones would have.
+
+**Predictions for the rebuild (R04), written before it runs:**
+- Momentum agreement falls below 1.00. Rough expectation about 0.7: for two normal scores with Spearman 0.54 the signs match about 70% of the time.
+- Mean-reversion agreement is at most 0.21 (the R02 rate), because a vote now needs RSI extreme, which is one of the two tail signals that made up that 0.21.
+- On nearly every day RSI extreme votes, z-score points the same way, because an RSI below 30 or above 70 implies a price far from its recent averages.
+- **Next run:** set `MOMENTUM_SIGNALS = ["rsi_50", "macd"]` and `REVERSION_SIGNALS = ["rsi_extreme", "z_score"]` in `config.py` and rerun `scripts/02_signals.py`, logged as R04 (section 4).

@@ -2,7 +2,7 @@
 
 A pre-registered test of whether agreement across momentum and mean-reversion signals, weighted by market regime, predicts BTC and ETH returns after trading costs.
 
-**Status:** spec agreed, data downloaded and checked, regime labels built. Signals in progress; no claim tested yet. See [`Documents/PLAN.md`](Documents/PLAN.md) for progress.
+**Status:** spec agreed, data downloaded and checked, regime labels and signals built. Correlation pre-check done: two signals per family kept (rate of change and Bollinger dropped as near-copies). No claim tested yet. See [`Documents/PLAN.md`](Documents/PLAN.md) for progress.
 
 ---
 
@@ -59,8 +59,10 @@ regime_consensus/
 │   ├── config.py              paths and every fixed number from the spec
 │   ├── io.py                  loading and saving; guards unseen and frozen data
 │   ├── runlog.py              writes runs.csv and enforces the run budget
-│   ├── regime_modeling.py     trend signs, regime labels, spells
-│   └── signals.py             the six signals and the agreement rule
+│   ├── regime_modeling.py     trend signs, regime labels, spells, volatility labels
+│   ├── signals.py             the six signals and the signals table
+│   ├── agreement.py           family votes (majority rule) and agreement rates
+│   └── signal_selection.py    correlation pre-check: drops near-copy signals
 ├── scripts/                   numbered pipeline steps (00_download, 01_regimes, ...)
 ├── Notebooks/                 data checks and exploration
 ├── tests/                     unit tests
@@ -68,7 +70,7 @@ regime_consensus/
     ├── raw/                   API responses, never edited
     ├── design/                BTC and ETH, 2017 warm-up + 2018–2025
     ├── unseen/                held-back coins
-    ├── derived/               processed tables (regime labels, signals)
+    ├── derived/               processed tables (regime labels, signals, volatility, correlations)
     └── frozen/                2026, empty until the final test
 ```
 
@@ -92,11 +94,13 @@ uv run python scripts/00_download.py
 
 The script never requests data after 2025-12-31, so the frozen test set is not downloaded.
 
-Build the regime labels, and run the tests:
+Run the tests, then the pipeline in order (each script is a logged run, so rerunning one adds a row to `runs.csv` and uses budget):
 
 ```bash
-uv run python scripts/01_regimes.py
 uv run pytest
+uv run python scripts/01_regimes.py
+uv run python scripts/02_signals.py
+uv run python scripts/03_correlation.py
 ```
 
 ---

@@ -35,11 +35,12 @@ High-level steps only. Details live in `NOTES.md` (the spec), `BACKTESTING.md` (
   - [x] Rule details settled in NOTES.md section 4 (calm/turbulent definition, either coin decides, order of checking)
   - [x] Config: `CORR_THRESHOLD`, `MOMENTUM_PRIORITY`, `REVERSION_PRIORITY`, `VOL_WINDOW`, `VOL_MEDIAN_WINDOW`
   - [x] `label_volatility` in `regime_modeling.py`, with tests
-  - [x] `select_signals` in `selection.py`, with tests on hand-made correlation tables
+  - [x] `select_signals` in `signal_selection.py`, with tests on hand-made correlation tables
   - [x] Shared test helpers moved to `tests/helpers.py`
-  - [ ] `scripts/03_correlation.py` (logged run): Spearman correlations of the six scores per coin, for all days, calm days and turbulent days; apply `select_signals` to the all-days tables; save, print what's kept, `log_run`
-  - [ ] If a signal is dropped: update `MOMENTUM_SIGNALS` / `REVERSION_SIGNALS` in config and rebuild the family votes (logged run)
-  - [ ] Record the result in NOTES.md section 12; document the saved tables in DATA.md
+  - [x] `scripts/03_correlation.py` (run R03): Spearman correlations of the six scores per coin, for all days, calm days and turbulent days; apply `select_signals` to the all-days tables; save, print what's kept, `log_run`
+  - [x] Record the result in NOTES.md section 12; document the saved tables in DATA.md. *Dropped: rate of change (momentum) and Bollinger (mean reversion).*
+  - [x] Update `MOMENTUM_SIGNALS` / `REVERSION_SIGNALS` in config, fix any tests that assume three signals per family, then rerun `scripts/02_signals.py` (run R04)
+  - [ ] Record R04 against the predictions in NOTES.md section 12; update the `signals` entry in DATA.md
 - [ ] **6. Claim 1: agreement. GATE.** Majority rule against a single signal. *Does combining signals add anything?*
   - [ ] Before starting: tests for `trend_sign`, `label_regimes` and `find_spells`
 - [ ] **7. Claim 2: regime dependence. GATE.** Family-by-state table against the predictions. *Is there anything for regimes to exploit?*
@@ -52,7 +53,7 @@ High-level steps only. Details live in `NOTES.md` (the spec), `BACKTESTING.md` (
 
 ## Where things stand
 
-- **Current phase:** 5, correlation pre-check. Decision logic built and tested (63 tests passing).
-- **Next action:** `scripts/03_correlation.py`. Volatility labels first exist in early February 2018 (about 396 days of history needed), so the calm and turbulent tables start then; note this when recording the result.
-- **Run budget:** 2 of 20 used (R01, R02).
+- **Current phase:** 5, correlation pre-check. R03 done: each family keeps two signals (momentum: MACD, RSI relative to 50; mean reversion: z-score, RSI extreme). 63 tests passing.
+- **Next action:** rebuild the family votes with the kept signals (R04). Predictions are already written in NOTES.md section 12; check them before running.
+- **Run budget:** 3 of 20 used (R01, R02, R03).
 - **Waiting on:** the team lead's confirmation that the fund trades through Alpaca, at tier 1, with no shorting (NOTES.md section 10).

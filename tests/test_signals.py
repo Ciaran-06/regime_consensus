@@ -5,7 +5,7 @@ import pytest
 from regime_consensus.signals import rsi, signal_rsi_50,signal_rate_of_change,signal_macd
 from regime_consensus.signals import signal_rsi_extreme, signal_bollinger_band, signal_z_score
 
-from regime_consensus.config import MOMENTUM_SIGNALS, REVERSION_SIGNALS
+from regime_consensus.config import MOMENTUM_CANDIDATES, REVERSION_CANDIDATES
 from regime_consensus.signals import SIGNALS, build_signals, signal_rsi_50, signal_z_score
 
 def daily(values):
@@ -269,8 +269,8 @@ def two_coin_prices(days=150):
 
 
 def test_signal_names_match_config():
-    assert set(MOMENTUM_SIGNALS) | set(REVERSION_SIGNALS) == set(SIGNALS)
-    assert not set(MOMENTUM_SIGNALS) & set(REVERSION_SIGNALS)
+    assert set(MOMENTUM_CANDIDATES) | set(REVERSION_CANDIDATES) == set(SIGNALS)
+    assert not set(MOMENTUM_CANDIDATES) & set(REVERSION_CANDIDATES)
 
 
 def test_build_signals_columns():
