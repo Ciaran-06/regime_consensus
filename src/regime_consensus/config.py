@@ -50,3 +50,8 @@ MACD_FAST, MACD_SLOW, MACD_SIGNAL = 12, 26, 9
 BB_PERIOD = 20
 BB_WIDTH = 2
 Z_LOOKBACKS = (20, 50, 100)
+
+# --- Overall Agreement
+FAMILY_MIN_AGREE = 2
+MOMENTUM_SIGNALS = ["rsi_50", "rate_of_change", "macd"]
+REVERSION_SIGNALS = ["rsi_extreme", "bollinger", "z_score"]

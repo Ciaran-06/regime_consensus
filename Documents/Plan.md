@@ -1,4 +1,4 @@
-# PLAN.md | regime_consensus | Last updated 17/11/26
+# PLAN.md | regime_consensus | Last updated 18/11/26
 
 High-level steps only. Details live in `NOTES.md` (the spec), `BACKTESTING.md` (the rules) and `DATA.md` (the data).
 
@@ -8,10 +8,11 @@ High-level steps only. Details live in `NOTES.md` (the spec), `BACKTESTING.md` (
 
 ## Standing rules (every phase)
 
-- Log every run in `runs.csv`, including failures. Budget: 20 runs.
+- Log every run in `runs.csv` with `log_run`, including failures. Budget: 20 runs.
 - One change per run.
 - Design data only (BTC, ETH) until phase 8. Unseen coins: dates only. Frozen: nothing.
 - No spec change after seeing a result it affects.
+- Debug with unit tests, not by rerunning logged scripts.
 - Commit before and after each phase.
 
 ---
@@ -24,6 +25,13 @@ High-level steps only. Details live in `NOTES.md` (the spec), `BACKTESTING.md` (
 - [x] **2. Finish the data checks.** Clear the `[TODO]`s in DATA.md. *So bad data can't create fake signals.*
 - [x] **3. Label regimes and count spells.** *To see whether each state has enough evidence to test, and how long states last.*
 - [ ] **4. Build and unit-test the six signals,** with the mean-reversion signs flipped. *So the code matches the spec before it touches returns.*
+  - [x] Signal definitions written in NOTES.md section 6, majority rule confirmed
+  - [x] `signals.py`: RSI, EMA, `sign_vote` and all six signals, each with tests
+  - [x] `agreement.py`: `count_votes` and `family_vote`, with tests
+  - [ ] `agreement_rate`
+  - [ ] `build_signals`: all six signals and both family votes for every coin, in one table
+  - [ ] `scripts/02_signals.py`: build, cut to 2018, save the `signals` table, print agreement rates, `log_run`
+  - [ ] Document the `signals` table in DATA.md; record agreement rates against the predictions in NOTES.md section 12
 - [ ] **5. Correlation pre-check.** Drop near-copies by the fixed rule. *So claim 1 tests different signals, not one signal several times.*
 - [ ] **6. Claim 1: agreement. GATE.** Majority rule against a single signal. *Does combining signals add anything?*
 - [ ] **7. Claim 2: regime dependence. GATE.** Family-by-state table against the predictions. *Is there anything for regimes to exploit?*
@@ -36,5 +44,7 @@ High-level steps only. Details live in `NOTES.md` (the spec), `BACKTESTING.md` (
 
 ## Where things stand
 
-- **Current phase:** 1 and 2 in parallel.
-- **Next action:** find BCH's four missing dates (dates only).
+- **Current phase:** 4, signals built and tested (44 tests passing).
+- **Next action:** `agreement_rate`, then `build_signals`.
+- **Run budget:** 1 of 20 used (R01).
+- **Waiting on:** the team lead's confirmation that the fund trades through Alpaca, at tier 1, with no shorting (NOTES.md section 10).
