@@ -28,8 +28,8 @@ High-level steps only. Details live in `NOTES.md` (the spec), `BACKTESTING.md` (
   - [x] Signal definitions written in NOTES.md section 6, majority rule confirmed
   - [x] `signals.py`: RSI, EMA, `sign_vote` and all six signals, each with tests
   - [x] `agreement.py`: `count_votes` and `family_vote`, with tests
-  - [ ] `agreement_rate`
-  - [ ] `build_signals`: all six signals and both family votes for every coin, in one table
+  - [x] `agreement_rate`
+  - [x] `build_signals`: all six signals and both family votes for every coin, in one table
   - [ ] `scripts/02_signals.py`: build, cut to 2018, save the `signals` table, print agreement rates, `log_run`
   - [ ] Document the `signals` table in DATA.md; record agreement rates against the predictions in NOTES.md section 12
 - [ ] **5. Correlation pre-check.** Drop near-copies by the fixed rule. *So claim 1 tests different signals, not one signal several times.*
