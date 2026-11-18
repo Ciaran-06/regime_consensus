@@ -31,7 +31,7 @@ High-level steps only. Details live in `NOTES.md` (the spec), `BACKTESTING.md` (
   - [x] `build_signals`: all six signals and both family votes for every coin, in one table
   - [x] `scripts/02_signals.py`: run R02, `signals` table saved
   - [x] `signals` table documented in DATA.md; agreement rates recorded in NOTES.md section 12
-- [ ] **5. Correlation pre-check.** Drop near-copies by the fixed rule. *So claim 1 tests different signals, not one signal several times.*
+- [x] **5. Correlation pre-check.** Drop near-copies by the fixed rule. *So claim 1 tests different signals, not one signal several times.*
   - [x] Rule details settled in NOTES.md section 4 (calm/turbulent definition, either coin decides, order of checking)
   - [x] Config: `CORR_THRESHOLD`, `MOMENTUM_PRIORITY`, `REVERSION_PRIORITY`, `VOL_WINDOW`, `VOL_MEDIAN_WINDOW`
   - [x] `label_volatility` in `regime_modeling.py`, with tests
@@ -39,9 +39,11 @@ High-level steps only. Details live in `NOTES.md` (the spec), `BACKTESTING.md` (
   - [x] Shared test helpers moved to `tests/helpers.py`
   - [x] `scripts/03_correlation.py` (run R03): Spearman correlations of the six scores per coin, for all days, calm days and turbulent days; apply `select_signals` to the all-days tables; save, print what's kept, `log_run`
   - [x] Record the result in NOTES.md section 12; document the saved tables in DATA.md. *Dropped: rate of change (momentum) and Bollinger (mean reversion).*
-  - [x] Update `MOMENTUM_SIGNALS` / `REVERSION_SIGNALS` in config, fix any tests that assume three signals per family, then rerun `scripts/02_signals.py` (run R04)
-  - [ ] Record R04 against the predictions in NOTES.md section 12; update the `signals` entry in DATA.md
+  - [x] Update `MOMENTUM_SIGNALS` / `REVERSION_SIGNALS` in config and rebuild the family votes. *R04 and R05 invalid (bug: votes still built from the candidate lists); fixed with a votes test, `FAMILIES` in config and a duplicate-run check in `runlog.py`; rerun as R06.*
+  - [x] Record R04–R06 in NOTES.md section 12; update the `signals` entry in DATA.md. *All three R06 predictions held; the reversion vote equals RSI extreme alone.*
 - [ ] **6. Claim 1: agreement. GATE.** Majority rule against a single signal. *Does combining signals add anything?*
+  - [ ] Before starting: decide the claim 1 comparator and the treatment of the reversion family, dated in NOTES.md section 4 (R06 showed the reversion vote is RSI extreme alone)
+  - [ ] Before starting: fix the t-statistic method and how the two coins are pooled, in NOTES.md section 4
   - [ ] Before starting: tests for `trend_sign`, `label_regimes` and `find_spells`
 - [ ] **7. Claim 2: regime dependence. GATE.** Family-by-state table against the predictions. *Is there anything for regimes to exploit?*
 - [ ] **8. Claim 3: switching. GATE.** Backtest against both families and the blend, then the deciding unseen coins pooled. *Is there anything to trade after costs?*
@@ -53,7 +55,7 @@ High-level steps only. Details live in `NOTES.md` (the spec), `BACKTESTING.md` (
 
 ## Where things stand
 
-- **Current phase:** 5, correlation pre-check. R03 done: each family keeps two signals (momentum: MACD, RSI relative to 50; mean reversion: z-score, RSI extreme). 63 tests passing.
-- **Next action:** rebuild the family votes with the kept signals (R04). Predictions are already written in NOTES.md section 12; check them before running.
-- **Run budget:** 3 of 20 used (R01, R02, R03).
+- **Current phase:** 6, preparing claim 1. Phase 5 done: each family keeps two signals, and the votes were rebuilt in R06. 71 tests passing.
+- **Next action:** close the claim 1 spec gaps in NOTES.md section 4 (comparator, reversion family, t-statistic and pooling), before any forward return is computed.
+- **Run budget:** 6 of 20 used (R01–R06; R04 and R05 invalid).
 - **Waiting on:** the team lead's confirmation that the fund trades through Alpaca, at tier 1, with no shorting (NOTES.md section 10).

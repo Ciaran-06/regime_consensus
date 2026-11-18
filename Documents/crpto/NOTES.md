@@ -1,6 +1,8 @@
-# NOTES.md | regime_consensus | Last updated 18/11/26 (runs R04 and R05: bug in the vote rebuild)
+# NOTES.md (crypto study) | regime_consensus | Last updated 18/11/26 (study paused: equities became the primary study)
 
-**Status:** Spec agreed on 16/11/26; all `[DRAFT]` items closed on 17/11/26. Data downloaded and checked. Regime labels built (run R01, 17/11/26). Six signals and both family votes built (run R02, 18/11/26). Correlation pre-check done (run R03, 18/11/26): rate of change and Bollinger dropped. The first two rebuilds of the family votes (runs R04 and R05) had a bug and are invalid; the rebuild is rerun as R06. No forward returns computed yet. Results are recorded in section 12 as they come in.
+**Paused on 18/11/26.** The equities study is now primary (`Documents/equities/NOTES.md`); this crypto study becomes its out-of-asset-class replication. Its state is tagged in git as `crypto-prechecks-v1`. See section 13.
+
+**Status at pause:** Spec agreed on 16/11/26; all `[DRAFT]` items closed on 17/11/26. Data downloaded and checked. Regime labels built (run R01, 17/11/26). Six signals and both family votes built (run R02, 18/11/26). Correlation pre-check done (run R03, 18/11/26): rate of change and Bollinger dropped. The first two rebuilds of the family votes (runs R04 and R05) had a bug and are invalid; the rebuild was rerun as R06 (18/11/26), and all three predictions held. Phase 5 is complete. Claim 1's comparison, fallback and statistics were settled on 18/11/26, and the reversion family is being widened with a volume signal before claim 1 (section 4). No forward returns computed yet. Results are recorded in section 12 as they come in.
 
 The rules every test follows are in `BACKTESTING.md`. Rule numbers below refer to that file.
 
@@ -146,6 +148,30 @@ All rules use past data only.
 - **Pass:** the majority rule's mean forward return is higher, with $t > 2$ on the difference (using a method that allows for overlapping 5-day windows).
 - **Confirmatory run:** the first complete run of this comparison on the design period, both coins pooled, with the fixed choices in section 6.
 
+**Details settled 18/11/26, after R06 and before any forward return was computed:**
+
+*Why these were needed:* R06 showed the reversion family vote is identical to RSI extreme on its own, which exposed that "a single signal" was never named, and that the $t$-statistic and the pooling of the two coins were not fixed.
+
+- **A. What agreement must beat: every member of its family.** In each family, the agreement rule is compared with each kept signal on its own. Each single signal trades on its own most extreme days by $|s_t|$, on the same number of days per coin as the family vote. Claim 1 passes in a family only if agreement beats **every** member, each with $t > 2$.
+  - *Reason:* the ensemble argument (Dietterich, 2000) is that a vote beats its members. Requiring every comparison to pass cannot raise the false-pass rate above that of a single test, and it leaves no choice of "the better member" to be made after seeing results.
+  - *Cut-off for "most extreme days":* set from each signal's $|s_t|$ over the whole design period, per coin. This looks ahead at the distribution of scores, but uses no returns. It is accepted because claim 1 is a statement about information, not a tradable rule; claim 3 uses no such cut-off.
+- **B. The reversion family is widened before claim 1.** R06 left the family effectively one signal: its vote is RSI extreme on every day. Section 4 says a family left with one signal cannot test claim 1 and the signal pool is widened (section 9). That rule was written for signals dropped by the pre-check, but the situation is the same in substance, so it is applied here.
+  - **Candidate:** a volume-conditioned reversal signal. Source: Campbell, Grossman and Wang (1993), *Quarterly Journal of Economics* 108(4): in a model where market makers absorb selling pressure, a price fall on high volume is more likely to be followed by a rise than one on low volume. They detrend log turnover by its one-year backward moving average, and the next-day return loads negatively on the product of detrended volume and today's return. This is the same liquidity-provision mechanism as Nagel (2012) in section 1.
+  - *Counter-evidence, stated in advance:* Bianchi, Babiak and Dickerson (2022), *Journal of Banking and Finance* 142, find in a cross-section of crypto pairs that short-term reversal returns are concentrated in pairs with **lower** trading activity. Their result compares coins with each other; this project uses volume over time within one coin, which is the setting of Campbell, Grossman and Wang.
+  - **Definition, horizon and priority order are fixed in a separate dated entry before any volume data beyond the checks in `DATA.md` is used.** Then the correlation pre-check is rerun with the new signal (logged), and the family votes are rebuilt (logged).
+  - *Consequence:* with three reversion signals, the family vote is again a 2-of-3 majority.
+- **C. If claim 1 fails in a family:** the agreement rule is replaced by the **equal-weighted average of the family's scaled scores**, and the family votes with its sign.
+  - *Reason:* simple averages of forecasts repeatedly beat estimated weightings, because of the error in estimating the weights (Smith and Wallis, 2009, *Oxford Bulletin of Economics and Statistics* 71(3); Timmermann, 2006). Equal weights have nothing to estimate.
+  - **Scaling:** each score is replaced by its signed percentile rank, $\tilde s_t = \operatorname{sign}(s_t) \times \operatorname{rank}\big(|s_t|\big)$, where the rank compares $|s_t|$ with every earlier day's $|s|$ (an expanding window, past days only, starting from the 2017 warm-up). The result lies between $-1$ and $+1$ and keeps the sign convention.
+    - *Why ranks:* crypto scores have fat tails, so dividing by a standard deviation would let one signal dominate on extreme days unless capped, and a cap is another number to choose. *Why expanding:* it has no window length to choose. Fewer free numbers leave fewer things that could be tuned.
+  - **Adopted untested:** this is the literature's default, not a result. Its comparison with each member is computed in the same confirmatory run as a **pre-declared secondary result**, reported but unable to pass claim 1. Claims 2 and 3 keep their own kill tests.
+  - *Consequence:* an average always has a sign, so a family using it votes on every day.
+- **D. Statistics.**
+  - For each rule and coin, a daily return $r_t = v_t \cdot R_{t \to t+5}$ on days the rule votes, and 0 otherwise, where $v_t$ is the vote and $R_{t \to t+5}$ the 5-day forward return.
+  - For each comparison, the daily difference $d_t$ between agreement and the single signal is computed per coin, then **averaged across BTC and ETH on each date**.
+  - The test is whether the mean of $d_t$ is above zero, with Newey–West standard errors using 4 lags ($h - 1$ for overlapping 5-day returns). Pass: $t > 2$.
+  - *Reason for averaging by date:* BTC and ETH move together, so treating their days as independent rows would roughly double the apparent sample and overstate $t$. *Reason for 4 lags:* consecutive 5-day returns share 4 days, which creates autocorrelation up to lag 4 under the null.
+
 ### Claim 2: regime dependence
 - **Metric:** mean 5-day forward return per signal, for each family in each trend state.
 - **Comparison:** the predicted table in section 3.
@@ -172,7 +198,7 @@ All rules use past data only.
 
 | Claim 1 | Claim 2 | Claim 3 | Decision |
 |---|---|---|---|
-| fail | – | – | Drop the agreement function. Continue with one signal per family. |
+| fail | – | – | Drop the agreement rule in that family. Use the equal-weighted average of its scaled scores instead (section 4, claim 1, C). |
 | any | fail | – | Stop. No regime switching. Write up the negative result. |
 | any | pass | fail | Regimes are real but not tradable after costs. Research paper only, no deployment. |
 | any | pass | pass | Continue to the frozen 2026 test, then paper trading. |
@@ -323,7 +349,7 @@ These follow from the formulas alone, not from data.
   - Conditions: one pre-declared run, counted in the budget; parameters estimated on past data only, refitted on an expanding window; it must beat the agreement rule out of sample.
   - If the agreement rule fails claim 1, this is not a rescue. It becomes a new hypothesis for a later project, written down before testing.
   - A neural network (for example a temporal transformer) is only considered after the state-space model, and needs more data than daily bars on two coins.
-- **A wider signal pool (volume, funding rates, on-chain activity, attention):** only if the correlation pre-check leaves a family with one signal. Each new signal needs a written source first, and should draw on information other than the closing price, so that its errors differ from the existing signals' (Dietterich's diversity condition).
+- **A wider signal pool (volume, funding rates, on-chain activity, attention):** only if the correlation pre-check leaves a family with one signal. *Triggered for the reversion family on 18/11/26 (section 4, claim 1, B): a volume-conditioned reversal signal is added; the other data types stay parked.* Each new signal needs a written source first, and should draw on information other than the closing price, so that its errors differ from the existing signals' (Dietterich's diversity condition).
 - **Hidden Markov model as the regime rule:** only if claim 2 passes with the simple rules, tested as one pre-declared change against them.
 - **Trend and volatility combined:** only if each passes on its own.
 - **Vol-forecast position sizing:** only after claim 3, as one pre-declared change.
@@ -466,3 +492,45 @@ Results are added here in run order. Each entry names its run in `runs.csv`. Not
 - **Safeguard added to the run log:** `check_new_run` refuses to start a script whose `script` and `what_changed` match a run already in `runs.csv`. It is called at the top of each script, before any data is loaded, so a duplicate is stopped before anything is computed or seen. A deliberate rerun must say why in `what_changed`.
 - **Cost:** two runs of budget (5 of 20 used).
 - **Next run (R06):** rerun `scripts/02_signals.py` with `what_changed` stating that it reruns R04 after the bug fix. Same predictions as R04.
+
+
+### R06 — Vote rebuild, rerun after the bug fix (18/11/26, diagnostic)
+
+- **Script:** `scripts/02_signals.py`. Saved as `data/derived/signals.parquet`, replacing the R02 table (see `DATA.md`).
+- **Family votes now use the signals kept by R03:** momentum RSI relative to 50 and MACD; mean reversion RSI extreme and z-score. With two signals each, a family votes only when both vote the same way (section 4).
+- **Uses no forward returns,** so it cannot pass or fail a claim.
+- **Checked before any result was printed:** each family vote equals `family_vote` recomputed on exactly the signals in `config.py`. A unit test checks the same rule and fails on the R04 bug.
+
+| Coin | Momentum agreement | Mean-reversion agreement | Z-score agrees on RSI-extreme days |
+|---|---|---|---|
+| BTC | 0.67 | 0.14 | 1.00 (412 of 412) |
+| ETH | 0.68 | 0.14 | 1.00 (413 of 413) |
+
+**All three predictions held:**
+- Momentum agreement is below 1.00 and close to the expected 0.7. MACD and RSI relative to 50 disagree on about one day in three, so the momentum gate now filters days.
+- Mean-reversion agreement (0.14) is below the R02 rate of 0.21.
+- Z-score points the same way on every day RSI extreme votes.
+
+**Finding: the mean-reversion family vote is identical to RSI extreme on its own.** Reversion speaks on $412/2922 = 0.141$ of BTC days, exactly the days RSI extreme votes, because z-score agreed on every one of them. The two-signal agreement rule adds no filtering in this family: it reproduces one signal. This follows from the definitions: an RSI below 30 or above 70 requires a run of losses or gains that also puts the price well away from its 20, 50 and 100-day averages.
+
+**Consequence for claim 1, recorded before any returns are computed:** the comparison in section 4 ("a single signal with its threshold set so that it trades on the same number of days") does not say which single signal.
+- In the reversion family, comparing with RSI extreme compares a series with itself, so the difference is exactly zero and claim 1 cannot pass. Comparing with z-score tests RSI extreme against z-score's tails, which is a comparison of two signals, not a test of agreement.
+- The comparator, and how the reversion family is treated, are decided and dated in section 4 before the claim 1 confirmatory run. That decision is made without forward returns.
+
+- **No missing scores** in 2018–2025 for any signal.
+- **Budget:** 6 of 20 used, 14 left.
+
+---
+
+## 13. Status at pause (18/11/26)
+
+Nothing above this section was changed by the pause.
+
+- **Why paused:** the equities study was made primary on 18/11/26, before any forward return was computed in either study. Reasons are in `Documents/equities/NOTES.md`, section 0. In short: the equity design period is unseen, the sources in section 1 were written for equities, and implied volatility gives a non-price signal that crypto lacks.
+- **Role from now on:** an out-of-asset-class replication, run after the equities study, from the tagged state `crypto-prechecks-v1`.
+- **Runs R01–R06 stay valid** as crypto pre-checks. None computed a forward return. They count only towards the crypto budget (6 of 20 used).
+- **Open item, to be decided before the replication resumes: section 4, claim 1, B (widening the reversion family).** A review on 18/11/26, before any volume data was used, found:
+  - Campbell, Grossman and Wang (1993) model reversal after high-volume moves in a single market over time, but their evidence is US stocks in 1962–1987, and the effect was strongest in 1962–1974.
+  - Bianchi, Babiak and Dickerson (2022) find, across about 100 crypto pairs, that reversal is stronger on **low**-volume shocks (the opposite direction), and close to zero and insignificant for large, liquid coins.
+  - So no source supports a volume reversal signal for BTC and ETH in a known direction. Options recorded: close the widening and test claim 1 in momentum only (favoured at the time of the pause); use Bianchi et al.'s direction; or a non-price signal such as perpetual funding rates, which only exists from mid-2016 (BTC) and August 2018 (ETH), from a venue (BitMEX) that has since closed.
+- **What the replication inherits from the equities study:** any rule changed in the equities spec does not change this spec. If the replication should use an equities rule, that is decided and dated here before it resumes.

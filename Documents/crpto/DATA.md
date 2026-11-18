@@ -1,6 +1,6 @@
 # DATA.md | regime_consensus | Data sources, layout, checks and known gaps
 
-Last updated 18/11/26 (`volatility` and `correlations` derived tables added, run R03). After every download, rerun `scripts/00_download.py` and update this file.
+Last updated 18/11/26 (`signals` table rebuilt in run R06 with the signals kept by R03). After every download, rerun `scripts/00_download.py` and update this file.
 
 Markers:
 - **[TODO]** = a check still to run. Fill in the result and remove the marker.
@@ -81,7 +81,7 @@ data/                                     not in git
 
 - A return of exactly zero would count as −1 (NOTES.md section 3). Checked 17/11/26: **0 ties** for both coins at both lookbacks, so the rule never applied.
 
-**`signals`** `data/derived/signals.parquet` (run R02, 18/11/26)
+**`signals`** `data/derived/signals.parquet` (first built in run R02; current version from run R06, 18/11/26)
 - Built by `scripts/02_signals.py` with `build_signals` from `src/regime_consensus/signals.py` and `family_vote` from `src/regime_consensus/agreement.py`.
 - BTC and ETH, 2018-01-01 to 2025-12-31. One row per coin per day: 2,922 rows per coin, 5,844 in total. Key: (`coin`, `date`).
 - Signals are computed on 2017–2025 closes, then cut to 2018 onwards. The longest lookback is 100 days (z-score), so 2017 covers every warm-up.
@@ -93,12 +93,15 @@ data/                                     not in git
 | `date` | datetime, no time zone | the UTC day |
 | `<signal>_score` | float | the signal's strength and direction; positive means "expect the price to rise" |
 | `<signal>_vote` | float: +1, −1 or NaN | the signal's direction, or NaN for no reading |
-| `momentum_vote` | float: +1, −1 or NaN | majority of the votes of the signals in `MOMENTUM_CANDIDATES`, NaN if no majority |
-| `reversion_vote` | float: +1, −1 or NaN | majority of the votes of the signals in `REVERSION_SIGNALS`, NaN if no majority |
+| `momentum_vote` | float: +1, −1 or NaN | +1 or −1 when both `rsi_50` and `macd` vote that way, otherwise NaN |
+| `reversion_vote` | float: +1, −1 or NaN | +1 or −1 when both `rsi_extreme` and `z_score` vote that way, otherwise NaN |
 
 - `<signal>` is one of `rsi_50`, `rate_of_change`, `macd` (momentum) and `rsi_extreme`, `bollinger`, `z_score` (mean reversion), in that column order.
 - Checked 18/11/26: **0 missing scores** for every signal in 2018–2025, so no flat-RSI days.
-- **The family votes in the R02 table use all three signals per family.** The correlation pre-check (R03) dropped `rate_of_change` and `bollinger`, so the table is rebuilt in R04 with family votes from `rsi_50` and `macd` (momentum) and `rsi_extreme` and `z_score` (mean reversion); with two signals the majority rule means both agree. All six scores and votes stay in the table, so the dropped signals can still be reported. Update this entry after R04.
+- **Family votes use the signals kept by the correlation pre-check (R03),** listed in `FAMILIES` in `config.py`. With two signals per family, the majority rule means both must agree. The R02 version used all three signals per family and has been replaced.
+- **All six scores and votes stay in the table,** including the dropped `rate_of_change` and `bollinger`, so they can still be reported.
+- Checked 18/11/26 (R06): momentum votes on 0.67 (BTC) and 0.68 (ETH) of days; reversion on 0.14 of days for both. The reversion vote equals `rsi_extreme_vote` on every day, because `z_score_vote` agreed on all 412 (BTC) and 413 (ETH) days RSI extreme voted.
+- R04 and R05 wrote a table with the bug described in NOTES.md section 12; R06 overwrote it.
 
 **`volatility`** `data/derived/volatility.parquet` (run R03, 18/11/26)
 - Built by `scripts/03_correlation.py` with `label_volatility` from `src/regime_consensus/regime_modeling.py`. Rule in NOTES.md section 3.
