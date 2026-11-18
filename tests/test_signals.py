@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from regime_consensus.signals import rsi, signal_rsi_50,signal_rate_of_change,signal_macd
-
+from regime_consensus.signals import signal_rsi_extreme, signal_bollinger_band, signal_z_score
 def daily(values):
     """A made-up price series with one row per day."""
     return pd.Series(values, index=pd.date_range("2018-01-01", periods=len(values)), dtype=float)
@@ -130,3 +130,123 @@ def test_macd_no_lookahead():
     changed = prices.copy()
     changed.iloc[60:] = changed.iloc[60:] * 2
     pd.testing.assert_frame_equal(signal_macd(prices).iloc[:60], signal_macd(changed).iloc[:60])
+
+def test_rsi_extreme_falling_votes_up():
+    result = signal_rsi_extreme(daily(range(40, 0, -1)))
+    assert (result["vote"].dropna() == 1).all()           # oversold: expect a bounce
+    assert (result["score"].dropna() == 1).all()          # RSI 0 is the very end of the scale
+
+
+def test_rsi_extreme_rising_votes_down():
+    result = signal_rsi_extreme(daily(range(1, 41)))
+    assert (result["vote"].dropna() == -1).all()
+    assert (result["score"].dropna() == -1).all()
+
+
+def test_rsi_extreme_middle_has_zero_score_and_no_vote():
+    result = signal_rsi_extreme(daily([100 + (i % 2) for i in range(200)]))
+    assert (result["score"].dropna() == 0).all()
+    assert result["vote"].isna().all()
+
+
+def test_rsi_extreme_warm_up_is_nan_not_zero():
+    result = signal_rsi_extreme(daily(range(1, 41)))
+    assert result.iloc[:14].isna().all().all()
+
+
+def test_rsi_extreme_score_between_minus_one_and_one():
+    prices = daily(100 + np.cumsum(np.random.default_rng(0).normal(0, 1, 300)))
+    assert signal_rsi_extreme(prices)["score"].dropna().between(-1, 1).all()
+
+
+def test_rsi_extreme_no_lookahead():
+    prices = daily(np.linspace(100, 140, 60) + np.sin(np.arange(60)) * 3)
+    changed = prices.copy()
+    changed.iloc[40:] = changed.iloc[40:] * 2
+    pd.testing.assert_frame_equal(
+        signal_rsi_extreme(prices).iloc[:40], signal_rsi_extreme(changed).iloc[:40]
+    )
+
+def calm(n=30):
+    """A quiet price wiggling between 100 and 101."""
+    return [100 + (i % 2) for i in range(n)]
+
+
+def test_bollinger_hand_calculated():
+    # window [1, 2, 3]: mean 2, population sd sqrt(2/3)
+    result = signal_bollinger_band(daily([1, 2, 3, 4, 10]), period=3)
+    assert result["score"].iloc[:2].isna().all()
+    assert np.isclose(result["score"].iloc[2], -(3 - 2) / (2 * np.sqrt(2 / 3)))
+
+
+def test_bollinger_sudden_drop_votes_up():
+    result = signal_bollinger_band(daily(calm() + [90]))
+    assert result["vote"].iloc[-1] == 1
+    assert result["score"].iloc[-1] > 1
+
+
+def test_bollinger_sudden_jump_votes_down():
+    result = signal_bollinger_band(daily(calm() + [115]))
+    assert result["vote"].iloc[-1] == -1
+    assert result["score"].iloc[-1] < -1
+
+
+def test_bollinger_inside_bands_has_no_vote():
+    result = signal_bollinger_band(daily(calm(60)))
+    assert result["vote"].isna().all()
+    assert result["score"].iloc[19:].notna().all()
+
+
+def test_bollinger_nan_until_full_window():
+    result = signal_bollinger_band(daily(calm(40)))
+    assert result["score"].iloc[:19].isna().all()
+    assert result["score"].iloc[19:].notna().all()
+
+
+def test_bollinger_no_lookahead():
+    prices = daily(np.linspace(100, 140, 60) + np.sin(np.arange(60)) * 3)
+    changed = prices.copy()
+    changed.iloc[40:] = changed.iloc[40:] * 2
+    pd.testing.assert_frame_equal(
+        signal_bollinger_band(prices).iloc[:40], signal_bollinger_band(changed).iloc[:40]
+    )
+
+def test_z_score_hand_calculated():
+    # the worked example: closes 10, 12, 11, 15 with lookbacks 2 and 3
+    result = signal_z_score(daily([10, 12, 11, 15]), lookbacks=(2, 3))
+    assert result["score"].iloc[:2].isna().all()
+    assert np.isclose(result["score"].iloc[2], 0.5)
+    z3 = (15 - np.mean([12, 11, 15])) / np.std([12, 11, 15])
+    assert np.isclose(result["score"].iloc[3], -(1 + z3) / 2)
+    assert list(result["vote"].iloc[2:]) == [1, -1]
+
+
+def test_z_score_high_price_votes_down():
+    result = signal_z_score(daily(calm(120) + [115]))
+    assert result["vote"].iloc[-1] == -1
+
+
+def test_z_score_low_price_votes_up():
+    result = signal_z_score(daily(calm(120) + [90]))
+    assert result["vote"].iloc[-1] == 1
+
+
+def test_z_score_nan_until_longest_lookback():
+    result = signal_z_score(daily(calm(150)))
+    assert result["score"].iloc[:99].isna().all()
+    assert result["score"].iloc[99:].notna().all()
+
+
+def test_z_score_20_day_is_twice_bollinger():
+    # NOTES.md section 6: Bollinger position is the 20-day z-score in disguise
+    prices = daily(100 + np.cumsum(np.random.default_rng(1).normal(0, 1, 200)))
+    z20 = signal_z_score(prices, lookbacks=(20,))["score"]
+    bollinger = signal_bollinger_band(prices)["score"]
+    pd.testing.assert_series_equal(z20, 2 * bollinger, check_names=False)
+
+
+def test_z_score_no_lookahead():
+    prices = daily(np.linspace(100, 140, 160) + np.sin(np.arange(160)) * 3)
+    changed = prices.copy()
+    changed.iloc[130:] = changed.iloc[130:] * 2
+    pd.testing.assert_frame_equal(signal_z_score(prices).iloc[:130], signal_z_score(changed).iloc[:130])
