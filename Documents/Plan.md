@@ -24,16 +24,24 @@ High-level steps only. Details live in `NOTES.md` (the spec), `BACKTESTING.md` (
 - [x] **1. Close the spec.** Finish the open `[DECIDE]` and `[DRAFT]` items in NOTES.md. *So every rule is fixed before any result.*
 - [x] **2. Finish the data checks.** Clear the `[TODO]`s in DATA.md. *So bad data can't create fake signals.*
 - [x] **3. Label regimes and count spells.** *To see whether each state has enough evidence to test, and how long states last.*
-- [ ] **4. Build and unit-test the six signals,** with the mean-reversion signs flipped. *So the code matches the spec before it touches returns.*
+- [x] **4. Build and unit-test the six signals,** with the mean-reversion signs flipped. *So the code matches the spec before it touches returns.*
   - [x] Signal definitions written in NOTES.md section 6, majority rule confirmed
   - [x] `signals.py`: RSI, EMA, `sign_vote` and all six signals, each with tests
-  - [x] `agreement.py`: `count_votes` and `family_vote`, with tests
-  - [x] `agreement_rate`
+  - [x] `agreement.py`: `count_votes`, `family_vote` and `agreement_rate`, with tests
   - [x] `build_signals`: all six signals and both family votes for every coin, in one table
-  - [ ] `scripts/02_signals.py`: build, cut to 2018, save the `signals` table, print agreement rates, `log_run`
-  - [ ] Document the `signals` table in DATA.md; record agreement rates against the predictions in NOTES.md section 12
+  - [x] `scripts/02_signals.py`: run R02, `signals` table saved
+  - [x] `signals` table documented in DATA.md; agreement rates recorded in NOTES.md section 12
 - [ ] **5. Correlation pre-check.** Drop near-copies by the fixed rule. *So claim 1 tests different signals, not one signal several times.*
+  - [x] Rule details settled in NOTES.md section 4 (calm/turbulent definition, either coin decides, order of checking)
+  - [x] Config: `CORR_THRESHOLD`, `MOMENTUM_PRIORITY`, `REVERSION_PRIORITY`, `VOL_WINDOW`, `VOL_MEDIAN_WINDOW`
+  - [x] `label_volatility` in `regime_modeling.py`, with tests
+  - [x] `select_signals` in `selection.py`, with tests on hand-made correlation tables
+  - [x] Shared test helpers moved to `tests/helpers.py`
+  - [ ] `scripts/03_correlation.py` (logged run): Spearman correlations of the six scores per coin, for all days, calm days and turbulent days; apply `select_signals` to the all-days tables; save, print what's kept, `log_run`
+  - [ ] If a signal is dropped: update `MOMENTUM_SIGNALS` / `REVERSION_SIGNALS` in config and rebuild the family votes (logged run)
+  - [ ] Record the result in NOTES.md section 12; document the saved tables in DATA.md
 - [ ] **6. Claim 1: agreement. GATE.** Majority rule against a single signal. *Does combining signals add anything?*
+  - [ ] Before starting: tests for `trend_sign`, `label_regimes` and `find_spells`
 - [ ] **7. Claim 2: regime dependence. GATE.** Family-by-state table against the predictions. *Is there anything for regimes to exploit?*
 - [ ] **8. Claim 3: switching. GATE.** Backtest against both families and the blend, then the deciding unseen coins pooled. *Is there anything to trade after costs?*
 - [ ] **9. Frozen 2026 test. GATE.** Opened once. A fail is final. *The last historical check.*
@@ -44,7 +52,7 @@ High-level steps only. Details live in `NOTES.md` (the spec), `BACKTESTING.md` (
 
 ## Where things stand
 
-- **Current phase:** 4, signals built and tested (44 tests passing).
-- **Next action:** `agreement_rate`, then `build_signals`.
-- **Run budget:** 1 of 20 used (R01).
+- **Current phase:** 5, correlation pre-check. Decision logic built and tested (63 tests passing).
+- **Next action:** `scripts/03_correlation.py`. Volatility labels first exist in early February 2018 (about 396 days of history needed), so the calm and turbulent tables start then; note this when recording the result.
+- **Run budget:** 2 of 20 used (R01, R02).
 - **Waiting on:** the team lead's confirmation that the fund trades through Alpaca, at tier 1, with no shorting (NOTES.md section 10).

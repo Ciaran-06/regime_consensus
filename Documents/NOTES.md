@@ -1,6 +1,6 @@
-# NOTES.md | regime_consensus | Last updated 17/11/26
+# NOTES.md | regime_consensus | Last updated 18/11/26 (pre-check details settled)
 
-**Status:** Spec agreed on 16/11/26; all `[DRAFT]` items closed on 17/11/26. Data downloaded and checked. Regime labels built and spells counted (run R01, 17/11/26). No forward returns or signals computed yet. Results are recorded in section 12 as they come in.
+**Status:** Spec agreed on 16/11/26; all `[DRAFT]` items closed on 17/11/26. Data downloaded and checked. Regime labels built (run R01, 17/11/26). Six signals and both family votes built (run R02, 18/11/26). No forward returns computed yet. Results are recorded in section 12 as they come in.
 
 The rules every test follows are in `BACKTESTING.md`. Rule numbers below refer to that file.
 
@@ -132,6 +132,12 @@ All rules use past data only.
 - **If a family is left with one signal,** claim 1 cannot be tested in that family, and the signal pool is widened from other types of data (see Parked).
 - This step uses no returns. It is logged in `runs.csv` as a diagnostic run.
 
+**Details settled 18/11/26, before any correlation was computed:**
+- **Calm and turbulent periods** use the volatility rule in section 3: turbulent if 30-day realised volatility is above its own median over the previous 365 days, calm otherwise. These two matrices are **reported only**; the decision uses the full design period.
+- **Either coin decides:** two signals are near-copies if their correlation is above 0.7 on **either** BTC or ETH. *Reason:* one set of signals is used for both coins, and the rule exists to stop one signal being counted twice, so it errs towards dropping.
+- **Order of checking:** within each family, go down the priority order (momentum: MACD, rate of change, RSI; mean reversion: z-score, Bollinger, RSI extreme). Keep each signal unless it is a near-copy of a signal already kept. *Reason:* gives the same answer however many signals are correlated with each other.
+- **If a signal is dropped:** it is removed from `MOMENTUM_SIGNALS` or `REVERSION_SIGNALS` in `config.py`, and the family votes are rebuilt. The rebuild is a logged diagnostic run.
+
 ### Claim 1: agreement
 - **Metric:** mean return over the next 5 days after a signal, in the direction the signal points.
 - **Comparison:** within each family, a single signal with its threshold set so that it trades on the same number of days as the agreement gate.
@@ -222,6 +228,7 @@ Notation: $C_t$ is the close on day $t$. $\text{SMA}_n$ and $\sigma_n$ are the m
 - **Score:** $s_t = (\text{RSI}_t - 50)/50$, between −1 and +1.
 - **Vote:** +1 if $\text{RSI}_t > 50$, −1 if below. No reading at exactly 50.
 - **History needed:** 14 days.
+- **Flat price:** if the price does not move at all, $G_t = L_t = 0$ and RSI is $0/0$. RSI is then NaN (no reading), not 50, so that missing information is never given a value. Decided 17/11/26, before any signal was computed. It gives no vote either way, since signals 1 and 4 both have no reading at RSI 50.
 - **Source:** Wilder (1978), *New Concepts in Technical Trading Systems*. Standard convention.
 
 #### 2. Rate of change (momentum)
@@ -374,3 +381,23 @@ Results are added here in run order. Each entry names its run in `runs.csv`. Not
 - **Most spells are very short:** the median is 2–4 days. The 30-day sign flips whenever the price is close to its level a month earlier, so a few long spells are surrounded by many brief ones.
 - **Warning for claim 3, recorded before any returns are computed:** this is the first evidence on the persistence condition. A strategy that switches every time the label changes would trade very often and pay 0.25% each time.
 - **The regime rule is not changed because of this.** Smoothing the labels or adding a minimum holding period now would be adjusting the spec after seeing data. If claim 3 fails on costs, this table is part of the explanation.
+
+### R02 — Signals and family votes (18/11/26, diagnostic)
+
+- **Script:** `scripts/02_signals.py`. Saved as `data/derived/signals.parquet` (see `DATA.md`).
+- **Sample:** BTC and ETH, 2018-01-01 to 2025-12-31 (2,922 days per coin). Signals computed on 2017–2025 closes, then cut to 2018.
+- **Uses no forward returns,** so it cannot pass or fail a claim.
+- **Prediction written into the run before it ran:** momentum agreement above 0.9, reversion below 0.3 (from the consequences in section 6).
+
+| Coin | Momentum agreement | Mean-reversion agreement |
+|---|---|---|
+| BTC | 1.00 | 0.21 |
+| ETH | 1.00 | 0.21 |
+
+(Agreement = share of days the family gives a reading under the majority rule.)
+
+- **Both predictions held.**
+- **Momentum agrees on every day,** confirming consequence 2 in section 6: three signals that always vote always produce a majority. In the momentum family, claim 1 is therefore a test of the majority **direction** against a single signal's direction, as already recorded.
+- **Mean reversion agrees on about one day in five** (roughly 610 days per coin), confirming consequence 3. In that family the agreement rule does act as a filter, and there are enough days to test claims 1 and 2.
+- **No missing scores in 2018–2025** for any signal, so the 2017 warm-up covers every lookback and there were no flat-RSI days.
+- **Consequence 1 confirmed in code before this run:** the unit test `test_z_score_20_day_is_twice_bollinger` shows the 20-day z-score is exactly twice the Bollinger score on every day of a random price series. Real-data correlations come in phase 5.

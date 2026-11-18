@@ -1,6 +1,6 @@
 # DATA.md | regime_consensus | Data sources, layout, checks and known gaps
 
-Last updated 17/11/26 (all data checks done; `regimes` derived table added). After every download, rerun `scripts/00_download.py` and update this file.
+Last updated 18/11/26 (`signals` derived table added). After every download, rerun `scripts/00_download.py` and update this file.
 
 Markers:
 - **[TODO]** = a check still to run. Fill in the result and remove the marker.
@@ -67,7 +67,7 @@ data/                                     not in git
 - Load with `load_derived(name, columns)` from `regime_consensus.io`.
 
 **`regimes`** `data/derived/regimes.parquet` (run R01, 17/11/26)
-- Built by `scripts/01_regimes.py` with `label_regimes` from `src/regime_consensus/regimes.py`.
+- Built by `scripts/01_regimes.py` with `label_regimes` from `src/regime_consensus/regime_modeling.py`.
 - BTC and ETH, 2018-01-01 to 2025-12-31. One row per coin per day: 2,922 rows per coin, 5,844 in total. Key: (`coin`, `date`).
 - Labels are computed on 2017–2025 closes, then cut to 2018 onwards, so 2017 only fills the 365-day lookbacks.
 
@@ -80,6 +80,25 @@ data/                                     not in git
 | `state` | text | `BULL`, `CORRECTION`, `BEAR` or `REBOUND` |
 
 - A return of exactly zero would count as −1 (NOTES.md section 3). Checked 17/11/26: **0 ties** for both coins at both lookbacks, so the rule never applied.
+
+**`signals`** `data/derived/signals.parquet` (run R02, 18/11/26)
+- Built by `scripts/02_signals.py` with `build_signals` from `src/regime_consensus/signals.py` and `family_vote` from `src/regime_consensus/agreement.py`.
+- BTC and ETH, 2018-01-01 to 2025-12-31. One row per coin per day: 2,922 rows per coin, 5,844 in total. Key: (`coin`, `date`).
+- Signals are computed on 2017–2025 closes, then cut to 2018 onwards. The longest lookback is 100 days (z-score), so 2017 covers every warm-up.
+- Definitions of every signal are in NOTES.md section 6.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `coin` | text | e.g. `BTC-USD` |
+| `date` | datetime, no time zone | the UTC day |
+| `<signal>_score` | float | the signal's strength and direction; positive means "expect the price to rise" |
+| `<signal>_vote` | float: +1, −1 or NaN | the signal's direction, or NaN for no reading |
+| `momentum_vote` | float: +1, −1 or NaN | majority of the three momentum votes, NaN if no majority |
+| `reversion_vote` | float: +1, −1 or NaN | majority of the three mean-reversion votes, NaN if no majority |
+
+- `<signal>` is one of `rsi_50`, `rate_of_change`, `macd` (momentum) and `rsi_extreme`, `bollinger`, `z_score` (mean reversion), in that column order.
+- Checked 18/11/26: **0 missing scores** for every signal in 2018–2025, so no flat-RSI days.
+
 ---
 
 ## 3. Coverage (16/11/26)

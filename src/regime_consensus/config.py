@@ -33,6 +33,10 @@ DESIGN_COINS = ["BTC-USD", "ETH-USD"]
 # Provisional list: the final one is fixed after checking each coin's first date (NOTES.md section 5)
 UNSEEN_COINS = ["LTC-USD", "BCH-USD", "LINK-USD", "ETC-USD"]
 
+# --- volatility rule (NOTES.md section 3) ---
+VOL_WINDOW = 30            # days of returns in realised volatility
+VOL_MEDIAN_WINDOW = 365    # days of past volatility in the median
+
 # --- regime rules (NOTES.md section 3) ---
 SLOW_LOOKBACK = 365   # days: 12-month convention (Goulding, Harvey and Mazzoleni, 2023)
 FAST_LOOKBACK = 30    # days: 1-month convention
@@ -55,3 +59,8 @@ Z_LOOKBACKS = (20, 50, 100)
 FAMILY_MIN_AGREE = 2
 MOMENTUM_SIGNALS = ["rsi_50", "rate_of_change", "macd"]
 REVERSION_SIGNALS = ["rsi_extreme", "bollinger", "z_score"]
+
+# --- Signal Correlation
+CORR_THRESHOLD = 0.7
+MOMENTUM_PRIORITY = ["macd", "rate_of_change", "rsi_50"]           # keep order: longest lookback first
+REVERSION_PRIORITY = ["z_score", "bollinger", "rsi_extreme"]       # keep order: longest lookback first

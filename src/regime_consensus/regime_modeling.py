@@ -25,6 +25,8 @@ from regime_consensus.config import (
     MIN_SPELLS,
     SLOW_LOOKBACK,
     TIE_SIGN,
+    VOL_WINDOW,
+    VOL_MEDIAN_WINDOW
 )
 
 State = Literal["BULL", "BEAR", "CORRECTION", "REBOUND"]
@@ -160,3 +162,13 @@ def spell_summary(
     )
     summary["meets_minimum"] = summary["long_spells"] >= min_spells
     return summary
+
+def label_volatility(close: pd.Series) -> pd.Series:
+    _check_daily_index(close)
+    log_returns = np.log(close / close.shift(1))
+    vol_30 = log_returns.rolling(window=VOL_WINDOW,min_periods=VOL_WINDOW).std()
+    median_365 = vol_30.shift(1).rolling(window=VOL_MEDIAN_WINDOW,min_periods=VOL_MEDIAN_WINDOW).median()
+    labels =  pd.Series(np.nan,index=close.index, dtype=object)
+    labels[vol_30 > median_365] = "HIGH"
+    labels[vol_30 <= median_365] = "LOW"
+    return labels.rename("volatility_label")
